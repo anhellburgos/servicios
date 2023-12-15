@@ -31,19 +31,19 @@ function setgeoJson(data){
       return { color: "#fff", weight: 0.2, fillColor: fillColor, fillOpacity: .5 };
     },
     onEachFeature: function(feature, layer){
-      layer.bindPopup( "<strong>" + feature.properties.mun_name + "</strong><br/> Código de municipio: " + feature.properties.mun_code + "<br/> Código de estado: " + feature.properties.state_code )
+      layer.bindPopup( "<strong>Especie: " + feature.properties.species + "<br/> Provincia: " + feature.properties.stateProvi + "<br/> Avistamiento: " + feature.properties.eventDate )
     }
   }
  ).addTo(map);
-  geoJsonLayer.eachLayer(function (layer) {
-      layer._path.id = 'estado' + layer.feature.properties.state_code+'-mun'+layer.feature.properties.mun_code;
-  });
+  // geoJsonLayer.eachLayer(function (layer) {
+  //     layer._path.id = 'estado' + layer.feature.properties.state_code+'-mun'+layer.feature.properties.mun_code;
+  // });
  }
  
 // Función para inicializar el mapa
 function initMap() {
   // Creamos el mapa
-  map = L.map('mapid').setView([-2.1961603, -79.8862076], 13);
+  map = L.map('mapid').setView([-1.180947, -78.414917], 8);
 
   var redIcon = new L.Icon({
     iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
@@ -52,12 +52,10 @@ function initMap() {
   });
 
   // Agregamos un marcador
-  var marker = L.marker([-2.170998, -79.922359], { draggable: true, icon: redIcon }).addTo(map);
+  var marker = L.marker([-1.180947, -78.414917], { draggable: true, icon: redIcon }).addTo(map);
 
   marker.bindPopup("<b>Coordenadas WGS 84</b><br>Latitud: " + marker.getLatLng().lat.toFixed(6) + "<br>Longitud: " + marker.getLatLng().lng.toFixed(6)).openPopup();
-  
 
-  
   marker.on('mousemove', function (event) {
     showMarkerCoordinates(marker);
   });
@@ -83,16 +81,13 @@ function initMap() {
     changeBasemap('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png');
   });
   
-  $.getJSON("states.geojson",function(data){
-    L.geoJson(data).addTo(map);
-   });
+  // $.getJSON("states.geojson",function(data){
+  //   L.geoJson(data).addTo(map);
+  // });
    
-   var munjson;
+   //var munjson;
    $.getJSON("osos.geojson", setgeoJson);
-
-   
 }
-
 
 // Inicializamos el mapa cuando la página carga
 window.onload = initMap;
