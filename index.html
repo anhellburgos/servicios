@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Esri Map - GeoJSON Layer (Guayaquil)</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.25/esri/themes/light/main.css">
+  <script src="https://js.arcgis.com/4.25/"></script>
+  <style>
+    html, body, #viewDiv {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+    .esri-widget {
+      font-size: 14px;
+    }
+    .esri-widget .esri-select {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 5px;
+    }
+    .esri-widget-expand {
+      background: white;
+      padding: 5px;
+      border-radius: 4px;
+      box-shadow: 0 0 3px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/GeoJSONLayer",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/geometry/Extent",
+      "esri/widgets/Expand"
+    ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, Extent, Expand) {
+
+      const geojsonLayer = new GeoJSONLayer({
+        url: "base_poblacional_gye.geojson",
+        renderer: {
+          type: "simple",
+          symbol: {
+            type: "simple-fill",
+            color: [0, 0, 0, 0], // Transparente
+            outline: {
+              color: "red",
+              width: 1
+            }
+          }
+        },
+        popupTemplate: {
+          title: "{Distrito}",
+          content: `
+            <b>Circuito:</b> {Circuito}<br>
+            <b>Subcircuito:</b> {Subcircuit}<br>
+            <b>Población:</b> {pob_t_sc}
+          `
+        }
+      });
+
+      const map = new Map({
+        basemap: "streets",
+        layers: [geojsonLayer]
+      });
+
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-79.8975, -2.1200], // Guayaquil, Ecuador
+        zoom: 13
+      });
+
+      const selectElement = document.createElement("select");
+      selectElement.className = "esri-select";
+      selectElement.style.width = "200px";
+
+      const expandWidget = new Expand({
+        view: view,
+        content: selectElement,
+        expandIconClass: "esri-icon-filter",
+        expanded: true,
+        group: "top-right"
+      });
+
+      view.ui.add(expandWidget, {
+        position: "top-right"
+      });
+
+      function populateCircuitoSelect() {
+        geojsonLayer.queryFeatures().then(results => {
+          const uniqueCircuitos = Array.from(new Set(results.features.map(feature => feature.attributes.Circuito)));
+
+          selectElement.innerHTML = '<option value="">Selecciona un Circuito</option>';
+          
+          uniqueCircuitos.forEach(circuito => {
+            const option = document.createElement("option");
+            option.value = circuito;
+            option.textContent = circuito;
+            selectElement.appendChild(option);
+          });
+
+          selectElement.addEventListener("change", function() {
+            const selectedCircuito = this.value;
+
+            geojsonLayer.renderer = {
+              type: "simple",
+              symbol: {
+                type: "simple-fill",
+                color: [0, 0, 0, 0],
+                outline: {
+                  color: "red",
+                  width: 1
+                }
+              }
+            };
+
+            if (selectedCircuito) {
+              geojsonLayer.queryFeatures({
+                where: `Circuito = '${selectedCircuito}'`
+              }).then(results => {
+                if (results.features.length > 0) {
+                  const highlightSymbol = new SimpleFillSymbol({
+                    color: [0, 0, 255, 0.2],
+                    outline: {
+                      color: "blue",
+                      width: 2
+                    }
+                  });
+
+                  results.features.forEach(feature => feature.symbol = highlightSymbol);
+
+                  const extent = results.features.reduce((ext, feature) => ext.union(feature.geometry.extent), new Extent());
+
+                  view.goTo(extent.expand(1.5)).catch(error => {
+                    console.error("Error al ajustar el extent:", error);
+                  });
+                }
+              }).catch(error => {
+                console.error("Error al consultar características:", error);
+              });
+            }
+          });
+        }).catch(error => {
+          console.error("Error al consultar características:", error);
+        });
+      }
+
+      populateCircuitoSelect();
+
+    });
+  </script>
+</body>
+</html>
