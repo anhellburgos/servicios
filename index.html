@@ -18,10 +18,28 @@
       border: 1px solid #ccc;
       border-radius: 4px;
     }
+    .info-box {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+      padding: 10px;
+      max-width: 250px;
+      z-index: 1000;
+      font-family: Arial, sans-serif;
+      display: none; /* Ocultar la caja al principio */
+    }
   </style>
 </head>
 <body>
   <div id="viewDiv"></div>
+
+  <div class="info-box" id="infoBox">
+    <p id="infoText"></p> <!-- El contenido se actualizará dinámicamente -->
+  </div>
 
   <script>
     require([
@@ -33,16 +51,23 @@
       "esri/widgets/Expand"
     ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, Extent, Expand) {
 
+      const defaultRenderer = {
+        type: "simple",
+        symbol: {
+          type: "simple-fill",
+          color: [0, 0, 0, 0], 
+          outline: { color: "red", width: 1 }
+        }
+      };
+
+      const highlightSymbol = new SimpleFillSymbol({
+        color: [0, 0, 255, 0.2],
+        outline: { color: "blue", width: 2 }
+      });
+
       const geojsonLayer = new GeoJSONLayer({
         url: "base_poblacional_gye.geojson",
-        renderer: {
-          type: "simple",
-          symbol: {
-            type: "simple-fill",
-            color: [0, 0, 0, 0], 
-            outline: { color: "red", width: 1 }
-          }
-        },
+        renderer: defaultRenderer,
         popupTemplate: {
           title: "{Distrito}",
           content: `
@@ -90,49 +115,42 @@
         }).catch(console.error);
       }
 
+      function updateMapForDistrito(selectedDistrito) {
+        geojsonLayer.queryFeatures({
+          where: `Distrito = '${selectedDistrito}'`
+        }).then(results => {
+          const features = results.features;
+          if (features.length > 0) {
+            const feature = features[0].attributes;
+            document.getElementById("infoText").innerHTML = `
+              <b>Distrito:</b> ${feature.Distrito}<br>
+              <b>Hectáreas:</b> ${feature.has_d}<br>
+              <b>Población:</b> ${feature.pob_t_d}
+            `;
+            document.getElementById("infoBox").style.display = "block"; // Mostrar la caja
+
+            geojsonLayer.renderer = {
+              type: "unique-value",
+              field: "Distrito",
+              defaultSymbol: defaultRenderer.symbol,
+              uniqueValueInfos: [{
+                value: selectedDistrito,
+                symbol: highlightSymbol
+              }]
+            };
+
+            const extent = features.reduce((ext, feature) => ext.union(feature.geometry.extent), new Extent());
+            view.goTo(extent.expand(1.5)).catch(console.error);
+          }
+        }).catch(console.error);
+      }
+
       selectElement.addEventListener("change", function() {
         const selectedDistrito = this.value;
-
-        // Restablecer el renderer a la configuración por defecto
-        geojsonLayer.renderer = {
-          type: "simple",
-          symbol: {
-            type: "simple-fill",
-            color: [0, 0, 0, 0],
-            outline: { color: "red", width: 1 }
-          }
-        };
-
-        // Si se selecciona un distrito, resaltar sus polígonos
         if (selectedDistrito) {
-          geojsonLayer.queryFeatures({
-            where: `Distrito = '${selectedDistrito}'`
-          }).then(results => {
-            if (results.features.length > 0) {
-              const highlightSymbol = new SimpleFillSymbol({
-                color: [0, 0, 255, 0.2],
-                outline: { color: "blue", width: 2 }
-              });
-
-              geojsonLayer.renderer = {
-                type: "unique-value",
-                field: "Distrito",
-                defaultSymbol: {
-                  type: "simple-fill",
-                  color: [0, 0, 0, 0],
-                  outline: { color: "red", width: 1 }
-                },
-                uniqueValueInfos: [{
-                  value: selectedDistrito,
-                  symbol: highlightSymbol
-                }]
-              };
-
-              // Centrar la vista en los polígonos seleccionados
-              const extent = results.features.reduce((ext, feature) => ext.union(feature.geometry.extent), new Extent());
-              view.goTo(extent.expand(1.5)).catch(console.error);
-            }
-          }).catch(console.error);
+          updateMapForDistrito(selectedDistrito);
+        } else {
+          document.getElementById("infoBox").style.display = "none"; // Ocultar la caja
         }
       });
 
@@ -142,4 +160,3 @@
   </script>
 </body>
 </html>
-
