@@ -12,19 +12,11 @@
       margin: 0;
       overflow: hidden;
     }
-    .esri-widget {
-      font-size: 14px;
-    }
-    .esri-widget .esri-select {
+    .esri-select {
+      width: 200px;
+      padding: 5px;
       border: 1px solid #ccc;
       border-radius: 4px;
-      padding: 5px;
-    }
-    .esri-widget-expand {
-      background: white;
-      padding: 5px;
-      border-radius: 4px;
-      box-shadow: 0 0 3px rgba(0, 0, 0, 0.2);
     }
   </style>
 </head>
@@ -47,11 +39,8 @@
           type: "simple",
           symbol: {
             type: "simple-fill",
-            color: [0, 0, 0, 0], // Transparente
-            outline: {
-              color: "red",
-              width: 1
-            }
+            color: [0, 0, 0, 0], 
+            outline: { color: "red", width: 1 }
           }
         },
         popupTemplate: {
@@ -78,82 +67,79 @@
 
       const selectElement = document.createElement("select");
       selectElement.className = "esri-select";
-      selectElement.style.width = "200px";
+      selectElement.innerHTML = '<option value="">Selecciona un Distrito</option>'; 
 
       const expandWidget = new Expand({
         view: view,
         content: selectElement,
         expandIconClass: "esri-icon-filter",
-        expanded: true,
-        group: "top-right"
+        expanded: true
       });
 
-      view.ui.add(expandWidget, {
-        position: "top-right"
-      });
+      view.ui.add(expandWidget, "top-right");
 
-      function populateCircuitoSelect() {
+      function populateDistritoSelect() {
         geojsonLayer.queryFeatures().then(results => {
-          const uniqueCircuitos = Array.from(new Set(results.features.map(feature => feature.attributes.Circuito)));
-
-          selectElement.innerHTML = '<option value="">Selecciona un Circuito</option>';
-          
-          uniqueCircuitos.forEach(circuito => {
+          const uniqueDistritos = [...new Set(results.features.map(f => f.attributes.Distrito))];
+          uniqueDistritos.forEach(distrito => {
             const option = document.createElement("option");
-            option.value = circuito;
-            option.textContent = circuito;
+            option.value = distrito;
+            option.textContent = distrito;
             selectElement.appendChild(option);
           });
-
-          selectElement.addEventListener("change", function() {
-            const selectedCircuito = this.value;
-
-            geojsonLayer.renderer = {
-              type: "simple",
-              symbol: {
-                type: "simple-fill",
-                color: [0, 0, 0, 0],
-                outline: {
-                  color: "red",
-                  width: 1
-                }
-              }
-            };
-
-            if (selectedCircuito) {
-              geojsonLayer.queryFeatures({
-                where: `Circuito = '${selectedCircuito}'`
-              }).then(results => {
-                if (results.features.length > 0) {
-                  const highlightSymbol = new SimpleFillSymbol({
-                    color: [0, 0, 255, 0.2],
-                    outline: {
-                      color: "blue",
-                      width: 2
-                    }
-                  });
-
-                  results.features.forEach(feature => feature.symbol = highlightSymbol);
-
-                  const extent = results.features.reduce((ext, feature) => ext.union(feature.geometry.extent), new Extent());
-
-                  view.goTo(extent.expand(1.5)).catch(error => {
-                    console.error("Error al ajustar el extent:", error);
-                  });
-                }
-              }).catch(error => {
-                console.error("Error al consultar características:", error);
-              });
-            }
-          });
-        }).catch(error => {
-          console.error("Error al consultar características:", error);
-        });
+        }).catch(console.error);
       }
 
-      populateCircuitoSelect();
+      selectElement.addEventListener("change", function() {
+        const selectedDistrito = this.value;
+
+        // Restablecer el renderer a la configuración por defecto
+        geojsonLayer.renderer = {
+          type: "simple",
+          symbol: {
+            type: "simple-fill",
+            color: [0, 0, 0, 0],
+            outline: { color: "red", width: 1 }
+          }
+        };
+
+        // Si se selecciona un distrito, resaltar sus polígonos
+        if (selectedDistrito) {
+          geojsonLayer.queryFeatures({
+            where: `Distrito = '${selectedDistrito}'`
+          }).then(results => {
+            if (results.features.length > 0) {
+              const highlightSymbol = new SimpleFillSymbol({
+                color: [0, 0, 255, 0.2],
+                outline: { color: "blue", width: 2 }
+              });
+
+              geojsonLayer.renderer = {
+                type: "unique-value",
+                field: "Distrito",
+                defaultSymbol: {
+                  type: "simple-fill",
+                  color: [0, 0, 0, 0],
+                  outline: { color: "red", width: 1 }
+                },
+                uniqueValueInfos: [{
+                  value: selectedDistrito,
+                  symbol: highlightSymbol
+                }]
+              };
+
+              // Centrar la vista en los polígonos seleccionados
+              const extent = results.features.reduce((ext, feature) => ext.union(feature.geometry.extent), new Extent());
+              view.goTo(extent.expand(1.5)).catch(console.error);
+            }
+          }).catch(console.error);
+        }
+      });
+
+      populateDistritoSelect();
 
     });
   </script>
 </body>
 </html>
+
