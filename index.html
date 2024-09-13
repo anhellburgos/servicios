@@ -25,7 +25,7 @@
       background: white;
       border: 1px solid #ccc;
       border-radius: 4px;
-      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
       padding: 10px;
       max-width: 250px;
       z-index: 1000;
@@ -36,7 +36,6 @@
 </head>
 <body>
   <div id="viewDiv"></div>
-
   <div class="info-box" id="infoBox">
     <p id="infoText"></p> <!-- El contenido se actualizará dinámicamente -->
   </div>
@@ -48,8 +47,9 @@
       "esri/layers/GeoJSONLayer",
       "esri/symbols/SimpleFillSymbol",
       "esri/geometry/Extent",
-      "esri/widgets/Expand"
-    ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, Extent, Expand) {
+      "esri/widgets/Expand",
+      "esri/widgets/BasemapGallery"
+    ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, Extent, Expand, BasemapGallery) {
 
       const defaultRenderer = {
         type: "simple",
@@ -79,16 +79,30 @@
       });
 
       const map = new Map({
-        basemap: "streets",
+        basemap: "hybrid",
         layers: [geojsonLayer]
       });
 
       const view = new MapView({
         container: "viewDiv",
         map: map,
-        center: [-79.8975, -2.1200], // Guayaquil, Ecuador
-        zoom: 13
+        center: [-79.9595, -2.1200], // Guayaquil, Ecuador
+        zoom: 11
       });
+
+      // Crear y agregar el widget BasemapGallery
+      const basemapGallery = new BasemapGallery({
+        view: view,
+        container: document.createElement("div") // Crear un contenedor vacío
+      });
+
+      const basemapGalleryExpand = new Expand({
+        view: view,
+        content: basemapGallery.container,
+        expandIconClass: "esri-icon-basemap"
+      });
+
+      view.ui.add(basemapGalleryExpand, "top-left");
 
       const selectElement = document.createElement("select");
       selectElement.className = "esri-select";
