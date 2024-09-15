@@ -51,42 +51,29 @@
       "esri/views/MapView",
       "esri/layers/GeoJSONLayer",
       "esri/symbols/SimpleFillSymbol",
-      "esri/geometry/Extent",
       "esri/widgets/Expand",
       "esri/widgets/BasemapGallery"
-    ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, Extent, Expand, BasemapGallery) {
-      
-      // Símbolos
-      const defaultSymbol = new SimpleFillSymbol({
-        color: [0, 0, 0, 0],
-        outline: { color: "red", width: 1 }
-      });
+    ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, Expand, BasemapGallery) {
 
-      const highlightSymbol = new SimpleFillSymbol({
-        color: [0, 0, 255, 0.2],
-        outline: { color: "blue", width: 2 }
-      });
+      // Definir los símbolos para los polígonos
+      const symbols = {
+        default: new SimpleFillSymbol({ color: [0, 0, 0, 0], outline: { color: "red", width: 1 } }),
+        highlightDistrict: new SimpleFillSymbol({ color: [0, 0, 255, 0.2], outline: { color: "red", width: 2 } }),
+        highlightCircuit: new SimpleFillSymbol({ color: [0, 255, 0, 0.2], outline: { color: "red", width: 2 } })
+      };
 
-      // Capa de GeoJSON
+      // Crear la capa de GeoJSON
       const geojsonLayer = new GeoJSONLayer({
         url: "base_poblacional_gye.geojson",
-        renderer: { type: "simple", symbol: defaultSymbol },
+        renderer: { type: "simple", symbol: symbols.default },
         popupTemplate: {
           title: "{Distrito}",
-          content: `
-            <b>Circuito:</b> {Circuito}<br>
-            <b>Subcircuito:</b> {Subcircuit}<br>
-            <b>Población:</b> {pob_t_sc}
-          `
+          content: `<b>Circuito:</b> {Circuito}<br><b>Subcircuito:</b> {Subcircuit}<br><b>Población:</b> {pob_t_sc}`
         }
       });
 
-      // Mapa y vista
-      const map = new Map({
-        basemap: "hybrid",
-        layers: [geojsonLayer]
-      });
-
+      // Configurar el mapa y la vista
+      const map = new Map({ basemap: "hybrid", layers: [geojsonLayer] });
       const view = new MapView({
         container: "viewDiv",
         map: map,
@@ -94,31 +81,7 @@
         zoom: 11
       });
 
-      // Widgets
-      const basemapGallery = new BasemapGallery({ view: view, container: document.createElement("div") });
-      const basemapGalleryExpand = new Expand({
-        view: view,
-        content: basemapGallery.container,
-        expandIconClass: "esri-icon-basemap"
-      });
-      view.ui.add(basemapGalleryExpand, "top-left");
-
-      const selectDistritoElement = createSelect("Selecciona un Distrito");
-      const selectSubcircuitoElement = createSelect("Selecciona un Subcircuito");
-      
-      const widgetsContainer = document.createElement("div");
-      widgetsContainer.className = "widget-container";
-      widgetsContainer.append(selectDistritoElement, selectSubcircuitoElement);
-
-      const widgetsExpand = new Expand({
-        view: view,
-        content: widgetsContainer,
-        expandIconClass: "esri-icon-filter",
-        expanded: true
-      });
-      view.ui.add(widgetsExpand, "top-right");
-
-      // Funciones
+      // Función para crear un widget de selección
       function createSelect(defaultText) {
         const select = document.createElement("select");
         select.className = "esri-select";
@@ -126,78 +89,121 @@
         return select;
       }
 
-      function updateSelect(element, options) {
-        element.innerHTML = '<option value="">Seleccione un Distrito</option>';
-        options.forEach(option => {
-          const opt = document.createElement("option");
-          opt.value = option;
-          opt.textContent = option;
-          element.appendChild(opt);
+      // Función para actualizar las opciones de selección
+      function updateSelect(element, options, defaultText) {
+        element.innerHTML = `<option value="">${defaultText}</option>`;
+        options.forEach(option => element.append(new Option(option, option)));
+      }
+
+      // Función para actualizar el mapa con la selección de distrito y circuito
+      function updateMap(distrito, circuito) {
+        geojsonLayer.definitionExpression = `Distrito = '${distrito}'`;
+        geojsonLayer.renderer = {
+          type: "unique-value",
+          field: "Distrito",
+          uniqueValueInfos: [{ value: distrito, symbol: symbols.highlightDistrict }],
+          defaultSymbol: symbols.default
+        };
+
+        if (circuito) {
+          geojsonLayer.definitionExpression += ` AND Circuito = '${circuito}'`;
+          geojsonLayer.renderer = {
+            type: "unique-value",
+            field: "Circuito",
+            uniqueValueInfos: [{ value: circuito, symbol: symbols.highlightCircuit }],
+            defaultSymbol: symbols.highlightDistrict
+          };
+        }
+
+        geojsonLayer.queryFeatures().then(results => {
+          const features = results.features;
+          if (features.length > 0) {
+            const extent = features.reduce((ext, feature) => ext ? ext.union(feature.geometry.extent) : feature.geometry.extent, null);
+            if (extent) view.goTo(extent.expand(1.5)).catch(console.error);
+
+            document.getElementById("infoText").innerHTML = `
+              <b>Distrito:</b> ${distrito}<br>
+              <b>Circuito:</b> ${circuito || 'Todos'}
+            `;
+            document.getElementById("infoBox").style.display = 'block';
+          } else {
+            document.getElementById("infoBox").style.display = 'none';
+          }
+        }).catch(console.error);
+      }
+
+      // Función para inicializar el widget de selección
+      function initializeSelects() {
+        const selectDistritoElement = createSelect("TODOS LOS DISTRITOS");
+        const selectCircuitoElement = createSelect("TODOS LOS CIRCUITOS");
+
+        const widgetsContainer = document.createElement("div");
+        widgetsContainer.className = "widget-container";
+        widgetsContainer.append(selectDistritoElement, selectCircuitoElement);
+
+        view.ui.add(new Expand({
+          view: view,
+          content: widgetsContainer,
+          expandIconClass: "esri-icon-filter",
+          expanded: true
+        }), "top-right");
+
+        return { selectDistritoElement, selectCircuitoElement };
+      }
+
+      // Función para manejar la actualización de los selects y el mapa
+      function handleSelectChanges(selectDistritoElement, selectCircuitoElement) {
+        selectDistritoElement.addEventListener("change", function() {
+          const selectedDistrito = this.value;
+          if (selectedDistrito) {
+            fetchUniqueValues("Circuito", `Distrito = '${selectedDistrito}'`)
+              .then(uniqueCircuitos => updateSelect(selectCircuitoElement, uniqueCircuitos, "TODOS LOS CIRCUITOS"))
+              .catch(console.error);
+
+            updateMap(selectedDistrito, null);
+          } else {
+            selectCircuitoElement.innerHTML = '<option value="">TODOS LOS CIRCUITOS</option>';
+            geojsonLayer.definitionExpression = "";
+            geojsonLayer.renderer = { type: "simple", symbol: symbols.default };
+            document.getElementById("infoBox").style.display = "none";
+          }
+        });
+
+        selectCircuitoElement.addEventListener("change", function() {
+          const selectedDistrito = selectDistritoElement.value;
+          const selectedCircuito = this.value;
+          if (selectedDistrito) {
+            updateMap(selectedDistrito, selectedCircuito);
+          } else {
+            document.getElementById("infoBox").style.display = "none";
+          }
         });
       }
 
+      // Función para obtener valores únicos de un campo
       function fetchUniqueValues(field, whereClause = "") {
         return geojsonLayer.queryFeatures({ where: whereClause })
           .then(results => [...new Set(results.features.map(f => f.attributes[field]))]);
       }
 
-      function updateMap(distrito, subcircuito) {
-        const query = subcircuito 
-          ? `Distrito = '${distrito}' AND Subcircuit = '${subcircuito}'`
-          : `Distrito = '${distrito}'`;
+      // Inicializar widgets de selección
+      const { selectDistritoElement, selectCircuitoElement } = initializeSelects();
+      handleSelectChanges(selectDistritoElement, selectCircuitoElement);
 
-        geojsonLayer.queryFeatures({ where: query })
-          .then(results => {
-            const features = results.features;
-            if (features.length > 0) {
-              const feature = features[0].attributes;
-              document.getElementById("infoText").innerHTML = `
-                <b>Distrito:</b> ${feature.Distrito}<br>
-                <b>Subcircuito:</b> ${feature.Subcircuit}<br>
-                <b>Hectáreas:</b> ${feature.has_d}<br>
-                <b>Población:</b> ${feature.pob_t_d}
-              `;
-              document.getElementById("infoBox").style.display = "block";
-
-              geojsonLayer.renderer = {
-                type: "unique-value",
-                field: "Distrito",
-                defaultSymbol: defaultSymbol,
-                uniqueValueInfos: [{ value: distrito, symbol: highlightSymbol }]
-              };
-
-              const extent = features.reduce((ext, feature) => ext.union(feature.geometry.extent), new Extent());
-              view.goTo(extent.expand(1.5)).catch(console.error);
-            }
-          })
-          .catch(console.error);
-      }
-
-      selectDistritoElement.addEventListener("change", function() {
-        const selectedDistrito = this.value;
-        if (selectedDistrito) {
-          fetchUniqueValues("Subcircuit", `Distrito = '${selectedDistrito}'`)
-            .then(uniqueSubcircuitos => updateSelect(selectSubcircuitoElement, uniqueSubcircuitos))
-            .catch(console.error);
-          updateMap(selectedDistrito, selectSubcircuitoElement.value);
-        } else {
-          selectSubcircuitoElement.innerHTML = '<option value="">Seleccione un Subcircuito</option>';
-          document.getElementById("infoBox").style.display = "none";
-        }
+      // Inicializar Basemap Gallery
+      const basemapGallery = new BasemapGallery({ view: view });
+      const basemapGalleryExpand = new Expand({
+        view: view,
+        content: basemapGallery,
+        expandIconClass: "esri-icon-basemap",
+        expanded: false // Cambiar el estado inicial a colapsado
       });
+      view.ui.add(basemapGalleryExpand, "top-left");
 
-      selectSubcircuitoElement.addEventListener("change", function() {
-        const selectedDistrito = selectDistritoElement.value;
-        const selectedSubcircuito = this.value;
-        if (selectedDistrito) {
-          updateMap(selectedDistrito, selectedSubcircuito);
-        } else {
-          document.getElementById("infoBox").style.display = "none";
-        }
-      });
-
-      // Inicializar
-      fetchUniqueValues("Distrito").then(uniqueDistritos => updateSelect(selectDistritoElement, uniqueDistritos)).catch(console.error);
+      // Inicializar con distritos disponibles
+      fetchUniqueValues("Distrito")
+        .then(uniqueDistritos => updateSelect(selectDistritoElement, uniqueDistritos, "TODOS LOS DISTRITOS"))
+        .catch(console.error);
 
     });
   </script>
