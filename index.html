@@ -57,9 +57,22 @@
 
       // Definir los símbolos para los polígonos
       const symbols = {
-        default: new SimpleFillSymbol({ color: [0, 0, 0, 0], outline: { color: "red", width: 1 } }),
-        highlightDistrict: new SimpleFillSymbol({ color: [0, 0, 255, 0.2], outline: { color: "red", width: 2 } }),
-        highlightCircuit: new SimpleFillSymbol({ color: [0, 255, 0, 0.2], outline: { color: "red", width: 2 } })
+        default: new SimpleFillSymbol({
+          color: [0, 0, 0, 0],
+          outline: { color: "red", width: 1 }
+        }),
+        highlightDistrict: new SimpleFillSymbol({
+          color: [0, 0, 255, 0.2],
+          outline: { color: "red", width: 2 }
+        }),
+        highlightCircuit: new SimpleFillSymbol({
+          color: [0, 255, 0, 0.2],
+          outline: { color: "red", width: 2 }
+        }),
+        highlightSubcircuit: new SimpleFillSymbol({
+          color: [255, 165, 0, 0.2], // Naranja
+          outline: { color: "red", width: 2 }
+        })
       };
 
       // Crear la capa de GeoJSON
@@ -68,7 +81,11 @@
         renderer: { type: "simple", symbol: symbols.default },
         popupTemplate: {
           title: "{Distrito}",
-          content: `<b>Circuito:</b> {Circuito}<br><b>Subcircuito:</b> {Subcircuit}<br><b>Población:</b> {pob_t_sc}`
+          content: `
+            <b>Circuito:</b> {Circuito}<br>
+            <b>Subcircuito:</b> {Subcircuit}<br>
+            <b>Población:</b> {pob_t_sc}
+          `
         }
       });
 
@@ -95,18 +112,21 @@
         options.forEach(option => element.append(new Option(option, option)));
       }
 
-      // Función para actualizar el mapa con la selección de distrito y circuito
-      function updateMap(distrito, circuito) {
-        geojsonLayer.definitionExpression = `Distrito = '${distrito}'`;
-        geojsonLayer.renderer = {
-          type: "unique-value",
-          field: "Distrito",
-          uniqueValueInfos: [{ value: distrito, symbol: symbols.highlightDistrict }],
-          defaultSymbol: symbols.default
-        };
+      // Función para actualizar el mapa con la selección de distrito, circuito y subcircuito
+      function updateMap(distrito, circuito, subcircuito) {
+        let expression = "";
+        if (distrito) {
+          expression += `Distrito = '${distrito}'`;
+          geojsonLayer.renderer = {
+            type: "unique-value",
+            field: "Distrito",
+            uniqueValueInfos: [{ value: distrito, symbol: symbols.highlightDistrict }],
+            defaultSymbol: symbols.default
+          };
+        }
 
         if (circuito) {
-          geojsonLayer.definitionExpression += ` AND Circuito = '${circuito}'`;
+          expression += ` AND Circuito = '${circuito}'`;
           geojsonLayer.renderer = {
             type: "unique-value",
             field: "Circuito",
@@ -114,6 +134,18 @@
             defaultSymbol: symbols.highlightDistrict
           };
         }
+
+        if (subcircuito) {
+          expression += ` AND Subcircuit = '${subcircuito}'`;
+          geojsonLayer.renderer = {
+            type: "unique-value",
+            field: "Subcircuit",
+            uniqueValueInfos: [{ value: subcircuito, symbol: symbols.highlightSubcircuit }],
+            defaultSymbol: symbols.highlightCircuit
+          };
+        }
+
+        geojsonLayer.definitionExpression = expression;
 
         geojsonLayer.queryFeatures().then(results => {
           const features = results.features;
@@ -123,7 +155,8 @@
 
             document.getElementById("infoText").innerHTML = `
               <b>Distrito:</b> ${distrito}<br>
-              <b>Circuito:</b> ${circuito || 'Todos'}
+              <b>Circuito:</b> ${circuito || 'Todos'}<br>
+              <b>Subcircuito:</b> ${subcircuito || 'Todos'}
             `;
             document.getElementById("infoBox").style.display = 'block';
           } else {
@@ -132,14 +165,15 @@
         }).catch(console.error);
       }
 
-      // Función para inicializar el widget de selección
+      // Función para inicializar los widgets de selección
       function initializeSelects() {
-        const selectDistritoElement = createSelect("TODOS LOS DISTRITOS");
-        const selectCircuitoElement = createSelect("TODOS LOS CIRCUITOS");
+        const selectDistrito = createSelect("TODOS LOS DISTRITOS");
+        const selectCircuito = createSelect("TODOS LOS CIRCUITOS");
+        const selectSubcircuito = createSelect("TODOS LOS SUBCIRCUITOS");
 
         const widgetsContainer = document.createElement("div");
         widgetsContainer.className = "widget-container";
-        widgetsContainer.append(selectDistritoElement, selectCircuitoElement);
+        widgetsContainer.append(selectDistrito, selectCircuito, selectSubcircuito);
 
         view.ui.add(new Expand({
           view: view,
@@ -148,32 +182,46 @@
           expanded: true
         }), "top-right");
 
-        return { selectDistritoElement, selectCircuitoElement };
+        return { selectDistrito, selectCircuito, selectSubcircuito };
       }
 
       // Función para manejar la actualización de los selects y el mapa
-      function handleSelectChanges(selectDistritoElement, selectCircuitoElement) {
-        selectDistritoElement.addEventListener("change", function() {
+      function handleSelectChanges(selectDistrito, selectCircuito, selectSubcircuito) {
+        selectDistrito.addEventListener("change", function() {
           const selectedDistrito = this.value;
           if (selectedDistrito) {
             fetchUniqueValues("Circuito", `Distrito = '${selectedDistrito}'`)
-              .then(uniqueCircuitos => updateSelect(selectCircuitoElement, uniqueCircuitos, "TODOS LOS CIRCUITOS"))
+              .then(uniqueCircuitos => updateSelect(selectCircuito, uniqueCircuitos, "TODOS LOS CIRCUITOS"))
               .catch(console.error);
 
-            updateMap(selectedDistrito, null);
+            updateMap(selectedDistrito, null, null);
           } else {
-            selectCircuitoElement.innerHTML = '<option value="">TODOS LOS CIRCUITOS</option>';
+            selectCircuito.innerHTML = '<option value="">TODOS LOS CIRCUITOS</option>';
+            selectSubcircuito.innerHTML = '<option value="">TODOS LOS SUBCIRCUITOS</option>';
             geojsonLayer.definitionExpression = "";
             geojsonLayer.renderer = { type: "simple", symbol: symbols.default };
             document.getElementById("infoBox").style.display = "none";
           }
         });
 
-        selectCircuitoElement.addEventListener("change", function() {
-          const selectedDistrito = selectDistritoElement.value;
+        selectCircuito.addEventListener("change", function() {
+          const selectedDistrito = selectDistrito.value;
           const selectedCircuito = this.value;
           if (selectedDistrito) {
-            updateMap(selectedDistrito, selectedCircuito);
+            fetchUniqueValues("Subcircuit", `Distrito = '${selectedDistrito}' AND Circuito = '${selectedCircuito}'`)
+              .then(uniqueSubcircuitos => updateSelect(selectSubcircuito, uniqueSubcircuitos, "TODOS LOS SUBCIRCUITOS"))
+              .catch(console.error);
+
+            updateMap(selectedDistrito, selectedCircuito, null);
+          }
+        });
+
+        selectSubcircuito.addEventListener("change", function() {
+          const selectedDistrito = selectDistrito.value;
+          const selectedCircuito = selectCircuito.value;
+          const selectedSubcircuito = this.value;
+          if (selectedDistrito && selectedCircuito) {
+            updateMap(selectedDistrito, selectedCircuito, selectedSubcircuito);
           } else {
             document.getElementById("infoBox").style.display = "none";
           }
@@ -186,23 +234,22 @@
           .then(results => [...new Set(results.features.map(f => f.attributes[field]))]);
       }
 
-      // Inicializar widgets de selección
-      const { selectDistritoElement, selectCircuitoElement } = initializeSelects();
-      handleSelectChanges(selectDistritoElement, selectCircuitoElement);
+      // Inicializar widgets de selección y Basemap Gallery
+      const { selectDistrito, selectCircuito, selectSubcircuito } = initializeSelects();
+      handleSelectChanges(selectDistrito, selectCircuito, selectSubcircuito);
 
-      // Inicializar Basemap Gallery
       const basemapGallery = new BasemapGallery({ view: view });
       const basemapGalleryExpand = new Expand({
         view: view,
         content: basemapGallery,
         expandIconClass: "esri-icon-basemap",
-        expanded: false // Cambiar el estado inicial a colapsado
+        expanded: false
       });
       view.ui.add(basemapGalleryExpand, "top-left");
 
       // Inicializar con distritos disponibles
       fetchUniqueValues("Distrito")
-        .then(uniqueDistritos => updateSelect(selectDistritoElement, uniqueDistritos, "TODOS LOS DISTRITOS"))
+        .then(uniqueDistritos => updateSelect(selectDistrito, uniqueDistritos, "TODOS LOS DISTRITOS"))
         .catch(console.error);
 
     });
