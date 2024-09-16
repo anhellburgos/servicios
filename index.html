@@ -7,13 +7,42 @@
   <link rel="stylesheet" href="https://js.arcgis.com/4.25/esri/themes/light/main.css">
   <script src="https://js.arcgis.com/4.25/"></script>
   <style>
-    html, body, #viewDiv {
+    html, body {
       height: 100%;
       margin: 0;
       overflow: hidden;
     }
+    #navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #333;
+      color: white;
+      padding: 10px;
+      text-align: center;
+      z-index: 1000;
+    }
+    #container {
+      display: flex;
+      height: calc(100% - 40px); /* Adjust height considering the navbar */
+      margin-top: 40px; /* Adjust margin considering the navbar */
+    }
+    #viewDiv {
+      width: 80%;
+      height: 100%;
+      position: relative;
+    }
+    #widgetsContainer {
+      width: 20%;
+      padding: 10px;
+      background: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
     .esri-select {
-      width: 200px;
+      width: 100%;
       padding: 5px;
       border: 1px solid #ccc;
       border-radius: 4px;
@@ -32,28 +61,41 @@
       font-family: Arial, sans-serif;
       display: none;
     }
-    .widget-container {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+    .esri-widget--button {
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
     }
   </style>
 </head>
 <body>
-  <div id="viewDiv"></div>
+  <div id="navbar">SIG-SEGURAEP</div>
+  <div id="container">
+    <div id="viewDiv"></div>
+    <div id="widgetsContainer">
+      <select id="selectDistrito" class="esri-select">
+        <option value="">TODOS LOS DISTRITOS</option>
+      </select>
+      <select id="selectCircuito" class="esri-select">
+        <option value="">TODOS LOS CIRCUITOS</option>
+      </select>
+      <select id="selectSubcircuito" class="esri-select">
+        <option value="">TODOS LOS SUBCIRCUITOS</option>
+      </select>
+    </div>
+  </div>
   <div class="info-box" id="infoBox">
     <p id="infoText"></p>
   </div>
-
   <script>
     require([
       "esri/Map",
       "esri/views/MapView",
       "esri/layers/GeoJSONLayer",
       "esri/symbols/SimpleFillSymbol",
-      "esri/widgets/Expand",
-      "esri/widgets/BasemapGallery"
-    ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, Expand, BasemapGallery) {
+      "esri/widgets/BasemapGallery",
+      "esri/widgets/Expand"
+    ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, BasemapGallery, Expand) {
 
       // Definir los símbolos para los polígonos
       const symbols = {
@@ -98,13 +140,20 @@
         zoom: 11
       });
 
-      // Función para crear un widget de selección
-      function createSelect(defaultText) {
-        const select = document.createElement("select");
-        select.className = "esri-select";
-        select.innerHTML = `<option value="">${defaultText}</option>`;
-        return select;
-      }
+      // Crear el BasemapGallery widget
+      const basemapGallery = new BasemapGallery({
+        view: view
+      });
+
+      // Crear un widget Expand para hacer que el BasemapGallery sea auto-colapsable
+      const basemapGalleryExpand = new Expand({
+        view: view,
+        content: basemapGallery,
+        expanded: false // Puede estar colapsado al inicio si se establece en false
+      });
+
+      // Agregar el widget Expand a la vista
+      view.ui.add(basemapGalleryExpand, "top-left");
 
       // Función para actualizar las opciones de selección
       function updateSelect(element, options, defaultText) {
@@ -165,28 +214,16 @@
         }).catch(console.error);
       }
 
-      // Función para inicializar los widgets de selección
+      // Función para inicializar los selects
       function initializeSelects() {
-        const selectDistrito = createSelect("TODOS LOS DISTRITOS");
-        const selectCircuito = createSelect("TODOS LOS CIRCUITOS");
-        const selectSubcircuito = createSelect("TODOS LOS SUBCIRCUITOS");
+        const selectDistrito = document.getElementById("selectDistrito");
+        const selectCircuito = document.getElementById("selectCircuito");
+        const selectSubcircuito = document.getElementById("selectSubcircuito");
 
-        const widgetsContainer = document.createElement("div");
-        widgetsContainer.className = "widget-container";
-        widgetsContainer.append(selectDistrito, selectCircuito, selectSubcircuito);
+        fetchUniqueValues("Distrito")
+          .then(uniqueDistritos => updateSelect(selectDistrito, uniqueDistritos, "TODOS LOS DISTRITOS"))
+          .catch(console.error);
 
-        view.ui.add(new Expand({
-          view: view,
-          content: widgetsContainer,
-          expandIconClass: "esri-icon-filter",
-          expanded: true
-        }), "top-right");
-
-        return { selectDistrito, selectCircuito, selectSubcircuito };
-      }
-
-      // Función para manejar la actualización de los selects y el mapa
-      function handleSelectChanges(selectDistrito, selectCircuito, selectSubcircuito) {
         selectDistrito.addEventListener("change", function() {
           const selectedDistrito = this.value;
           if (selectedDistrito) {
@@ -198,20 +235,20 @@
           } else {
             selectCircuito.innerHTML = '<option value="">TODOS LOS CIRCUITOS</option>';
             selectSubcircuito.innerHTML = '<option value="">TODOS LOS SUBCIRCUITOS</option>';
-            geojsonLayer.definitionExpression = "";
-            geojsonLayer.renderer = { type: "simple", symbol: symbols.default };
-            document.getElementById("infoBox").style.display = "none";
+            updateMap(null, null, null);
           }
         });
 
         selectCircuito.addEventListener("change", function() {
           const selectedDistrito = selectDistrito.value;
           const selectedCircuito = this.value;
-          if (selectedDistrito) {
+          if (selectedDistrito && selectedCircuito) {
             fetchUniqueValues("Subcircuit", `Distrito = '${selectedDistrito}' AND Circuito = '${selectedCircuito}'`)
               .then(uniqueSubcircuitos => updateSelect(selectSubcircuito, uniqueSubcircuitos, "TODOS LOS SUBCIRCUITOS"))
               .catch(console.error);
 
+            updateMap(selectedDistrito, selectedCircuito, null);
+          } else {
             updateMap(selectedDistrito, selectedCircuito, null);
           }
         });
@@ -220,38 +257,29 @@
           const selectedDistrito = selectDistrito.value;
           const selectedCircuito = selectCircuito.value;
           const selectedSubcircuito = this.value;
-          if (selectedDistrito && selectedCircuito) {
-            updateMap(selectedDistrito, selectedCircuito, selectedSubcircuito);
-          } else {
-            document.getElementById("infoBox").style.display = "none";
-          }
+          updateMap(selectedDistrito, selectedCircuito, selectedSubcircuito);
         });
       }
 
       // Función para obtener valores únicos de un campo
       function fetchUniqueValues(field, whereClause = "") {
-        return geojsonLayer.queryFeatures({ where: whereClause })
-          .then(results => [...new Set(results.features.map(f => f.attributes[field]))]);
+        const query = {
+          where: whereClause,
+          outFields: [field],
+          returnDistinctValues: true,
+          returnCountOnly: false
+        };
+
+        return geojsonLayer.queryFeatures(query)
+          .then(result => result.features.map(f => f.attributes[field]))
+          .then(values => [...new Set(values)].sort())
+          .catch(console.error);
       }
 
-      // Inicializar widgets de selección y Basemap Gallery
-      const { selectDistrito, selectCircuito, selectSubcircuito } = initializeSelects();
-      handleSelectChanges(selectDistrito, selectCircuito, selectSubcircuito);
-
-      const basemapGallery = new BasemapGallery({ view: view });
-      const basemapGalleryExpand = new Expand({
-        view: view,
-        content: basemapGallery,
-        expandIconClass: "esri-icon-basemap",
-        expanded: false
+      // Inicializar el mapa y los selects
+      view.when(() => {
+        initializeSelects();
       });
-      view.ui.add(basemapGalleryExpand, "top-left");
-
-      // Inicializar con distritos disponibles
-      fetchUniqueValues("Distrito")
-        .then(uniqueDistritos => updateSelect(selectDistrito, uniqueDistritos, "TODOS LOS DISTRITOS"))
-        .catch(console.error);
-
     });
   </script>
 </body>
