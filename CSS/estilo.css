@@ -1,0 +1,68 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+#navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  font-style: oblique;
+  width: 100%;
+  background: #333;
+  color: white;
+  padding: 15px;
+  z-index: 1000;
+}
+
+#container {
+  display: flex;
+  height: calc(100% - 40px); /* Ajustar altura considerando el navbar */
+  margin-top: 40px; /* Ajustar margen considerando el navbar */
+}
+
+#viewDiv {
+  width: 80%;
+  height: 100%;
+  position: relative;
+}
+
+#widgetsContainer {
+  width: 20%;
+  padding: 10px;
+  background-color: #f5b24d; /* Color gris */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+}
+
+#chartContainer {
+  width: 100%;
+  height: 300px; /* Ajustar altura según sea necesario */
+  background-color: #fff;
+  padding: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
+.esri-select {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.esri-widget--button {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.esri-select {
+  font-size: 10px; /* Ajustar tamaño de fuente según sea necesario */
+}
+
