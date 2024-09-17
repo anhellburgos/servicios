@@ -5,71 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Esri Map - GeoJSON Layer (Guayaquil)</title>
   <link rel="stylesheet" href="https://js.arcgis.com/4.25/esri/themes/light/main.css">
+  <link rel="stylesheet" href="/CSS/estilo.css">
   <script src="https://js.arcgis.com/4.25/"></script>
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-    }
-    #navbar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      background: #333;
-      color: white;
-      padding: 10px;
-      text-align: center;
-      z-index: 1000;
-    }
-    #container {
-      display: flex;
-      height: calc(100% - 40px); /* Adjust height considering the navbar */
-      margin-top: 40px; /* Adjust margin considering the navbar */
-    }
-    #viewDiv {
-      width: 80%;
-      height: 100%;
-      position: relative;
-    }
-    #widgetsContainer {
-      width: 20%;
-      padding: 10px;
-      background: #f4f4f4;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .esri-select {
-      width: 100%;
-      padding: 5px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    .info-box {
-      position: fixed;
-      bottom: 10px;
-      right: 10px;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      padding: 10px;
-      max-width: 250px;
-      z-index: 1000;
-      font-family: Arial, sans-serif;
-      display: none;
-    }
-    .esri-widget--button {
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-  </style>
 </head>
 <body>
-  <div id="navbar">SIG-SEGURAEP</div>
+  <div id="navbar">SIG-S</div>
   <div id="container">
     <div id="viewDiv"></div>
     <div id="widgetsContainer">
@@ -84,9 +24,7 @@
       </select>
     </div>
   </div>
-  <div class="info-box" id="infoBox">
-    <p id="infoText"></p>
-  </div>
+
   <script>
     require([
       "esri/Map",
@@ -97,41 +35,32 @@
       "esri/widgets/Expand"
     ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, BasemapGallery, Expand) {
 
-      // Definir los símbolos para los polígonos
+      // Función para crear símbolos
+      function createSymbol(fillColor, outlineColor = "red", outlineWidth = 0.5) {
+        return new SimpleFillSymbol({
+          color: fillColor,
+          outline: { color: outlineColor, width: outlineWidth }
+        });
+      }
+
       const symbols = {
-        default: new SimpleFillSymbol({
-          color: [0, 0, 0, 0],
-          outline: { color: "red", width: 1 }
-        }),
-        highlightDistrict: new SimpleFillSymbol({
-          color: [0, 0, 255, 0.2],
-          outline: { color: "red", width: 2 }
-        }),
-        highlightCircuit: new SimpleFillSymbol({
-          color: [0, 255, 0, 0.2],
-          outline: { color: "red", width: 2 }
-        }),
-        highlightSubcircuit: new SimpleFillSymbol({
-          color: [255, 165, 0, 0.2], // Naranja
-          outline: { color: "red", width: 2 }
-        })
+        default: createSymbol([0, 0, 0, 0]),
+        highlightDistrict: createSymbol([0, 0, 255, 0.2]),
+        highlightCircuit: createSymbol([0, 255, 0, 0.2]),
+        highlightSubcircuit: createSymbol([255, 165, 0, 0.2])
       };
 
-      // Crear la capa de GeoJSON
+      // Capa de GeoJSON
       const geojsonLayer = new GeoJSONLayer({
         url: "base_poblacional_gye.geojson",
         renderer: { type: "simple", symbol: symbols.default },
         popupTemplate: {
           title: "{Distrito}",
-          content: `
-            <b>Circuito:</b> {Circuito}<br>
-            <b>Subcircuito:</b> {Subcircuit}<br>
-            <b>Población:</b> {pob_t_sc}
-          `
+          content: `<b>Circuito:</b> {Circuito}<br><b>Subcircuito:</b> {Subcircuit}<br><b>Población:</b> {pob_t_sc}`
         }
       });
 
-      // Configurar el mapa y la vista
+      // Crear mapa y vista
       const map = new Map({ basemap: "hybrid", layers: [geojsonLayer] });
       const view = new MapView({
         container: "viewDiv",
@@ -140,101 +69,62 @@
         zoom: 11
       });
 
-      // Crear el BasemapGallery widget
-      const basemapGallery = new BasemapGallery({
-        view: view
-      });
+      // Basemap Gallery y Expand
+      const basemapGallery = new BasemapGallery({ view: view });
+      const basemapGalleryExpand = new Expand({ view: view, content: basemapGallery, expanded: false });
+      view.ui.add(basemapGalleryExpand, "bottom-left");
 
-      // Crear un widget Expand para hacer que el BasemapGallery sea auto-colapsable
-      const basemapGalleryExpand = new Expand({
-        view: view,
-        content: basemapGallery,
-        expanded: false // Puede estar colapsado al inicio si se establece en false
-      });
-
-      // Agregar el widget Expand a la vista
-      view.ui.add(basemapGalleryExpand, "top-left");
-
-      // Función para actualizar las opciones de selección
+      // Actualizar selects
       function updateSelect(element, options, defaultText) {
         element.innerHTML = `<option value="">${defaultText}</option>`;
         options.forEach(option => element.append(new Option(option, option)));
       }
 
-      // Función para actualizar el mapa con la selección de distrito, circuito y subcircuito
+      // Actualizar mapa
       function updateMap(distrito, circuito, subcircuito) {
-        let expression = "";
-        if (distrito) {
-          expression += `Distrito = '${distrito}'`;
-          geojsonLayer.renderer = {
-            type: "unique-value",
-            field: "Distrito",
-            uniqueValueInfos: [{ value: distrito, symbol: symbols.highlightDistrict }],
-            defaultSymbol: symbols.default
-          };
-        }
+        let expression = [];
+        if (distrito) expression.push(`Distrito = '${distrito}'`);
+        if (circuito) expression.push(`Circuito = '${circuito}'`);
+        if (subcircuito) expression.push(`Subcircuit = '${subcircuito}'`);
 
-        if (circuito) {
-          expression += ` AND Circuito = '${circuito}'`;
-          geojsonLayer.renderer = {
-            type: "unique-value",
-            field: "Circuito",
-            uniqueValueInfos: [{ value: circuito, symbol: symbols.highlightCircuit }],
-            defaultSymbol: symbols.highlightDistrict
-          };
-        }
+        geojsonLayer.definitionExpression = expression.join(" AND ") || "1=1";
 
-        if (subcircuito) {
-          expression += ` AND Subcircuit = '${subcircuito}'`;
-          geojsonLayer.renderer = {
-            type: "unique-value",
-            field: "Subcircuit",
-            uniqueValueInfos: [{ value: subcircuito, symbol: symbols.highlightSubcircuit }],
-            defaultSymbol: symbols.highlightCircuit
-          };
-        }
+        const rendererField = subcircuito ? "Subcircuit" : circuito ? "Circuito" : "Distrito";
+        const rendererSymbol = subcircuito ? symbols.highlightSubcircuit : circuito ? symbols.highlightCircuit : symbols.highlightDistrict;
 
-        geojsonLayer.definitionExpression = expression;
+        geojsonLayer.renderer = {
+          type: "unique-value",
+          field: rendererField,
+          uniqueValueInfos: [{ value: subcircuito || circuito || distrito, symbol: rendererSymbol }],
+          defaultSymbol: symbols.default
+        };
 
         geojsonLayer.queryFeatures().then(results => {
           const features = results.features;
-          if (features.length > 0) {
+          if (features.length) {
             const extent = features.reduce((ext, feature) => ext ? ext.union(feature.geometry.extent) : feature.geometry.extent, null);
             if (extent) view.goTo(extent.expand(1.5)).catch(console.error);
-
-            document.getElementById("infoText").innerHTML = `
-              <b>Distrito:</b> ${distrito}<br>
-              <b>Circuito:</b> ${circuito || 'Todos'}<br>
-              <b>Subcircuito:</b> ${subcircuito || 'Todos'}
-            `;
-            document.getElementById("infoBox").style.display = 'block';
-          } else {
-            document.getElementById("infoBox").style.display = 'none';
           }
         }).catch(console.error);
       }
 
-      // Función para inicializar los selects
+      // Inicializar selects
       function initializeSelects() {
         const selectDistrito = document.getElementById("selectDistrito");
         const selectCircuito = document.getElementById("selectCircuito");
         const selectSubcircuito = document.getElementById("selectSubcircuito");
 
-        fetchUniqueValues("Distrito")
-          .then(uniqueDistritos => updateSelect(selectDistrito, uniqueDistritos, "TODOS LOS DISTRITOS"))
-          .catch(console.error);
+        // Asignar valores únicos a los selects
+        fetchUniqueValues("Distrito").then(distritos => updateSelect(selectDistrito, distritos, "TODOS LOS DISTRITOS"));
 
         selectDistrito.addEventListener("change", function() {
           const selectedDistrito = this.value;
           if (selectedDistrito) {
-            fetchUniqueValues("Circuito", `Distrito = '${selectedDistrito}'`)
-              .then(uniqueCircuitos => updateSelect(selectCircuito, uniqueCircuitos, "TODOS LOS CIRCUITOS"))
-              .catch(console.error);
-
+            fetchUniqueValues("Circuito", `Distrito = '${selectedDistrito}'`).then(circuitos => updateSelect(selectCircuito, circuitos, "TODOS LOS CIRCUITOS"));
             updateMap(selectedDistrito, null, null);
           } else {
-            selectCircuito.innerHTML = '<option value="">TODOS LOS CIRCUITOS</option>';
-            selectSubcircuito.innerHTML = '<option value="">TODOS LOS SUBCIRCUITOS</option>';
+            updateSelect(selectCircuito, [], "TODOS LOS CIRCUITOS");
+            updateSelect(selectSubcircuito, [], "TODOS LOS SUBCIRCUITOS");
             updateMap(null, null, null);
           }
         });
@@ -242,44 +132,26 @@
         selectCircuito.addEventListener("change", function() {
           const selectedDistrito = selectDistrito.value;
           const selectedCircuito = this.value;
-          if (selectedDistrito && selectedCircuito) {
-            fetchUniqueValues("Subcircuit", `Distrito = '${selectedDistrito}' AND Circuito = '${selectedCircuito}'`)
-              .then(uniqueSubcircuitos => updateSelect(selectSubcircuito, uniqueSubcircuitos, "TODOS LOS SUBCIRCUITOS"))
-              .catch(console.error);
-
-            updateMap(selectedDistrito, selectedCircuito, null);
-          } else {
-            updateMap(selectedDistrito, selectedCircuito, null);
+          updateSelect(selectSubcircuito, [], "TODOS LOS SUBCIRCUITOS");
+          if (selectedCircuito) {
+            fetchUniqueValues("Subcircuit", `Distrito = '${selectedDistrito}' AND Circuito = '${selectedCircuito}'`).then(subcircuitos => updateSelect(selectSubcircuito, subcircuitos, "TODOS LOS SUBCIRCUITOS"));
           }
+          updateMap(selectedDistrito, selectedCircuito, null);
         });
 
         selectSubcircuito.addEventListener("change", function() {
-          const selectedDistrito = selectDistrito.value;
-          const selectedCircuito = selectCircuito.value;
-          const selectedSubcircuito = this.value;
-          updateMap(selectedDistrito, selectedCircuito, selectedSubcircuito);
+          updateMap(selectDistrito.value, selectCircuito.value, this.value);
         });
       }
 
-      // Función para obtener valores únicos de un campo
+      // Obtener valores únicos de un campo
       function fetchUniqueValues(field, whereClause = "") {
-        const query = {
-          where: whereClause,
-          outFields: [field],
-          returnDistinctValues: true,
-          returnCountOnly: false
-        };
-
-        return geojsonLayer.queryFeatures(query)
-          .then(result => result.features.map(f => f.attributes[field]))
-          .then(values => [...new Set(values)].sort())
-          .catch(console.error);
+        return geojsonLayer.queryFeatures({ where: whereClause, outFields: [field], returnDistinctValues: true })
+          .then(result => Array.from(new Set(result.features.map(f => f.attributes[field]))).sort());
       }
 
-      // Inicializar el mapa y los selects
-      view.when(() => {
-        initializeSelects();
-      });
+      // Inicializar selects al cargar
+      initializeSelects();
     });
   </script>
 </body>
