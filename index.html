@@ -15,6 +15,8 @@
     <div id="widgetsContainer">
       <select id="selectHorario1" class="esri-select"></select>
       <select id="selectHorario2" class="esri-select"></select>
+      <!-- Si decides añadir un tercer horario, descomenta la siguiente línea -->
+      <!-- <select id="selectHorario3" class="esri-select"></select> -->
     </div>
   </div>
 
@@ -47,15 +49,8 @@
       });
 
       view.ui.add(createBasemapGallery(view), "bottom-left");
+      view.ui.add(new Locate({ view: view, useTracking: true }), "top-right");
 
-      // Añadir widget de localización
-      const locateWidget = new Locate({
-        view: view,
-        useTracking: true  // Mantiene la ubicación actual actualizada
-      });
-      view.ui.add(locateWidget, "top-right");  // Agregar en la parte superior derecha
-
-      // Inicializar selects al cargar
       initializeSelects();
 
       function createSymbol(fillColor, outlineColor = fillColor, outlineWidth = 0.5) {
@@ -73,8 +68,11 @@
       }
 
       function createBasemapGallery(view) {
-        const basemapGallery = new BasemapGallery({ view: view });
-        return new Expand({ view: view, content: basemapGallery, expanded: false });
+        return new Expand({ 
+          view: view, 
+          content: new BasemapGallery({ view: view }), 
+          expanded: false 
+        });
       }
 
       function updateSelect(element, options, defaultText) {
@@ -84,14 +82,9 @@
 
       function updateMap(horario1, horario2) {
         const expressions = [];
-        if (horario1) {
-          expressions.push(`Horario_1 = '${horario1}'`);
-        }
-        if (horario2) {
-          expressions.push(`Horario_2 = '${horario2}'`);
-        }
-        
-        // Aplicar la expresión de definición para mostrar los polígonos seleccionados
+        if (horario1) expressions.push(`Horario_1 = '${horario1}'`);
+        if (horario2) expressions.push(`Horario_2 = '${horario2}'`);
+
         geojsonLayer.definitionExpression = expressions.length ? expressions.join(" OR ") : "1=1";
 
         const rendererField = horario2 ? "Horario_2" : "Horario_1";
@@ -101,9 +94,9 @@
           field: rendererField,
           uniqueValueInfos: [{
             value: horario2 || horario1,
-            symbol: createSymbol([0, 255, 0, 0.5]) // Color para el horario seleccionado
+            symbol: createSymbol([255, 0, 0, 0.5], [255, 255, 255, 1])
           }],
-          defaultSymbol: createSymbol([0, 0, 255, 0.2]) // Color para el resto
+          defaultSymbol: createSymbol([0, 0, 255, 0.2])
         };
 
         geojsonLayer.queryFeatures().then(results => {
@@ -117,29 +110,41 @@
       function initializeSelects() {
         const selectHorario1 = document.getElementById("selectHorario1");
         const selectHorario2 = document.getElementById("selectHorario2");
+        // En caso de un tercer horario, añadir el siguiente código
+        // const selectHorario3 = document.getElementById("selectHorario3");
 
-        // Inicializar select de Horario 1
         fetchUniqueValues("Horario_1").then(horarios1 => {
           updateSelect(selectHorario1, horarios1, "TODOS LOS HORARIOS 1");
         });
 
-        // Inicializar select de Horario 2 con todas las horas
         fetchUniqueValues("Horario_2").then(horarios2 => {
-          updateSelect(selectHorario2, horarios2, "TODOS LOS HORARIOS 2");
+          const filteredHorarios2 = horarios2.filter(h => h !== "SIN CORTE");
+          updateSelect(selectHorario2, filteredHorarios2, "TODOS LOS HORARIOS 2");
         });
 
-        // Lógica de eventos para la actualización de selects
         selectHorario1.addEventListener("change", function() {
           const selectedHorario1 = this.value;
-          selectHorario2.selectedIndex = 0; // Limpiar selección de selectHorario2
-          updateMap(selectedHorario1, null); // Actualizar el mapa solo con horario1
+          selectHorario2.selectedIndex = 0;
+          // En caso de un tercer horario, añadir el siguiente código
+          // selectHorario3.selectedIndex = 0;
+          updateMap(selectedHorario1, null);
         });
 
         selectHorario2.addEventListener("change", function() {
           const selectedHorario2 = this.value;
-          selectHorario1.selectedIndex = 0; // Limpiar selección de selectHorario1
-          updateMap(null, selectedHorario2); // Actualizar el mapa solo con horario2
+          selectHorario1.selectedIndex = 0; 
+          // En caso de un tercer horario, añadir el siguiente código
+          // selectHorario3.selectedIndex = 0;
+          updateMap(null, selectedHorario2);
         });
+
+        // En caso de un tercer horario, añadir el siguiente código
+        // selectHorario3.addEventListener("change", function() {
+        //   const selectedHorario3 = this.value;
+        //   selectHorario1.selectedIndex = 0; 
+        //   selectHorario2.selectedIndex = 0; 
+        //   updateMap(null, null, selectedHorario3);
+        // });
       }
 
       function fetchUniqueValues(field) {
