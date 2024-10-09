@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Esri Map - GeoJSON Layer (Guayaquil)</title>
+  <title>Esri Map - GeoJSON Layer (Cortes)</title>
   <link rel="stylesheet" href="https://js.arcgis.com/4.25/esri/themes/light/main.css">
   <link rel="stylesheet" href="CSS/estilo.css">
   <script src="https://js.arcgis.com/4.25/"></script>
@@ -13,15 +13,8 @@
   <div id="container">
     <div id="viewDiv"></div>
     <div id="widgetsContainer">
-      <select id="selectDistrito" class="esri-select">
-        <option value="">TODOS LOS DISTRITOS</option>
-      </select>
-      <select id="selectCircuito" class="esri-select">
-        <option value="">TODOS LOS CIRCUITOS</option>
-      </select>
-      <select id="selectSubcircuito" class="esri-select">
-        <option value="">TODOS LOS SUBCIRCUITOS</option>
-      </select>
+      <select id="selectHorario1" class="esri-select"></select>
+      <select id="selectHorario2" class="esri-select"></select>
     </div>
   </div>
 
@@ -32,35 +25,19 @@
       "esri/layers/GeoJSONLayer",
       "esri/symbols/SimpleFillSymbol",
       "esri/widgets/BasemapGallery",
-      "esri/widgets/Expand"
-    ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, BasemapGallery, Expand) {
-
-      // Función para crear símbolos
-      function createSymbol(fillColor, outlineColor = "red", outlineWidth = 0.5) {
-        return new SimpleFillSymbol({
-          color: fillColor,
-          outline: { color: outlineColor, width: outlineWidth }
-        });
-      }
-
-      const symbols = {
-        default: createSymbol([0, 0, 0, 0]),
-        highlightDistrict: createSymbol([0, 0, 255, 0.2]),
-        highlightCircuit: createSymbol([0, 255, 0, 0.2]),
-        highlightSubcircuit: createSymbol([255, 165, 0, 0.2])
-      };
-
-      // Capa de GeoJSON
+      "esri/widgets/Expand",
+      "esri/widgets/Locate"
+    ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, BasemapGallery, Expand, Locate) {
+      
       const geojsonLayer = new GeoJSONLayer({
-        url: "base_poblacional_gye.geojson",
-        renderer: { type: "simple", symbol: symbols.default },
+        url: "cortes.geojson",
+        renderer: createRenderer(),
         popupTemplate: {
-          title: "{Distrito}",
-          content: `<b>Circuito:</b> {Circuito}<br><b>Subcircuito:</b> {Subcircuit}<br><b>Población:</b> {pob_t_sc}`
+          title: "Información",
+          content: `<b>Horario 1:</b> {Horario_1}<br><b>Horario 2:</b> {Horario_2}`
         }
       });
 
-      // Crear mapa y vista
       const map = new Map({ basemap: "hybrid", layers: [geojsonLayer] });
       const view = new MapView({
         container: "viewDiv",
@@ -69,89 +46,106 @@
         zoom: 11
       });
 
-      // Basemap Gallery y Expand
-      const basemapGallery = new BasemapGallery({ view: view });
-      const basemapGalleryExpand = new Expand({ view: view, content: basemapGallery, expanded: false });
-      view.ui.add(basemapGalleryExpand, "bottom-left");
+      view.ui.add(createBasemapGallery(view), "bottom-left");
 
-      // Actualizar selects
+      // Añadir widget de localización
+      const locateWidget = new Locate({
+        view: view,
+        useTracking: true  // Mantiene la ubicación actual actualizada
+      });
+      view.ui.add(locateWidget, "top-right");  // Agregar en la parte superior derecha
+
+      // Inicializar selects al cargar
+      initializeSelects();
+
+      function createSymbol(fillColor, outlineColor = fillColor, outlineWidth = 0.5) {
+        return new SimpleFillSymbol({
+          color: fillColor,
+          outline: { color: outlineColor, width: outlineWidth }
+        });
+      }
+
+      function createRenderer() {
+        return {
+          type: "simple",
+          symbol: createSymbol([0, 0, 255, 0.2])
+        };
+      }
+
+      function createBasemapGallery(view) {
+        const basemapGallery = new BasemapGallery({ view: view });
+        return new Expand({ view: view, content: basemapGallery, expanded: false });
+      }
+
       function updateSelect(element, options, defaultText) {
         element.innerHTML = `<option value="">${defaultText}</option>`;
         options.forEach(option => element.append(new Option(option, option)));
       }
 
-      // Actualizar mapa
-      function updateMap(distrito, circuito, subcircuito) {
-        let expression = [];
-        if (distrito) expression.push(`Distrito = '${distrito}'`);
-        if (circuito) expression.push(`Circuito = '${circuito}'`);
-        if (subcircuito) expression.push(`Subcircuit = '${subcircuito}'`);
+      function updateMap(horario1, horario2) {
+        const expressions = [];
+        if (horario1) {
+          expressions.push(`Horario_1 = '${horario1}'`);
+        }
+        if (horario2) {
+          expressions.push(`Horario_2 = '${horario2}'`);
+        }
+        
+        // Aplicar la expresión de definición para mostrar los polígonos seleccionados
+        geojsonLayer.definitionExpression = expressions.length ? expressions.join(" OR ") : "1=1";
 
-        geojsonLayer.definitionExpression = expression.join(" AND ") || "1=1";
-
-        const rendererField = subcircuito ? "Subcircuit" : circuito ? "Circuito" : "Distrito";
-        const rendererSymbol = subcircuito ? symbols.highlightSubcircuit : circuito ? symbols.highlightCircuit : symbols.highlightDistrict;
+        const rendererField = horario2 ? "Horario_2" : "Horario_1";
 
         geojsonLayer.renderer = {
           type: "unique-value",
           field: rendererField,
-          uniqueValueInfos: [{ value: subcircuito || circuito || distrito, symbol: rendererSymbol }],
-          defaultSymbol: symbols.default
+          uniqueValueInfos: [{
+            value: horario2 || horario1,
+            symbol: createSymbol([0, 255, 0, 0.5]) // Color para el horario seleccionado
+          }],
+          defaultSymbol: createSymbol([0, 0, 255, 0.2]) // Color para el resto
         };
 
         geojsonLayer.queryFeatures().then(results => {
-          const features = results.features;
-          if (features.length) {
-            const extent = features.reduce((ext, feature) => ext ? ext.union(feature.geometry.extent) : feature.geometry.extent, null);
+          if (results.features.length) {
+            const extent = results.features.reduce((ext, feature) => ext ? ext.union(feature.geometry.extent) : feature.geometry.extent, null);
             if (extent) view.goTo(extent.expand(1.5)).catch(console.error);
           }
         }).catch(console.error);
       }
 
-      // Inicializar selects
       function initializeSelects() {
-        const selectDistrito = document.getElementById("selectDistrito");
-        const selectCircuito = document.getElementById("selectCircuito");
-        const selectSubcircuito = document.getElementById("selectSubcircuito");
+        const selectHorario1 = document.getElementById("selectHorario1");
+        const selectHorario2 = document.getElementById("selectHorario2");
 
-        // Asignar valores únicos a los selects
-        fetchUniqueValues("Distrito").then(distritos => updateSelect(selectDistrito, distritos, "TODOS LOS DISTRITOS"));
-
-        selectDistrito.addEventListener("change", function() {
-          const selectedDistrito = this.value;
-          if (selectedDistrito) {
-            fetchUniqueValues("Circuito", `Distrito = '${selectedDistrito}'`).then(circuitos => updateSelect(selectCircuito, circuitos, "TODOS LOS CIRCUITOS"));
-            updateMap(selectedDistrito, null, null);
-          } else {
-            updateSelect(selectCircuito, [], "TODOS LOS CIRCUITOS");
-            updateSelect(selectSubcircuito, [], "TODOS LOS SUBCIRCUITOS");
-            updateMap(null, null, null);
-          }
+        // Inicializar select de Horario 1
+        fetchUniqueValues("Horario_1").then(horarios1 => {
+          updateSelect(selectHorario1, horarios1, "TODOS LOS HORARIOS 1");
         });
 
-        selectCircuito.addEventListener("change", function() {
-          const selectedDistrito = selectDistrito.value;
-          const selectedCircuito = this.value;
-          updateSelect(selectSubcircuito, [], "TODOS LOS SUBCIRCUITOS");
-          if (selectedCircuito) {
-            fetchUniqueValues("Subcircuit", `Distrito = '${selectedDistrito}' AND Circuito = '${selectedCircuito}'`).then(subcircuitos => updateSelect(selectSubcircuito, subcircuitos, "TODOS LOS SUBCIRCUITOS"));
-          }
-          updateMap(selectedDistrito, selectedCircuito, null);
+        // Inicializar select de Horario 2 con todas las horas
+        fetchUniqueValues("Horario_2").then(horarios2 => {
+          updateSelect(selectHorario2, horarios2, "TODOS LOS HORARIOS 2");
         });
 
-        selectSubcircuito.addEventListener("change", function() {
-          updateMap(selectDistrito.value, selectCircuito.value, this.value);
+        // Lógica de eventos para la actualización de selects
+        selectHorario1.addEventListener("change", function() {
+          const selectedHorario1 = this.value;
+          selectHorario2.selectedIndex = 0; // Limpiar selección de selectHorario2
+          updateMap(selectedHorario1, null); // Actualizar el mapa solo con horario1
+        });
+
+        selectHorario2.addEventListener("change", function() {
+          const selectedHorario2 = this.value;
+          selectHorario1.selectedIndex = 0; // Limpiar selección de selectHorario1
+          updateMap(null, selectedHorario2); // Actualizar el mapa solo con horario2
         });
       }
 
-      // Obtener valores únicos de un campo
-      function fetchUniqueValues(field, whereClause = "") {
-        return geojsonLayer.queryFeatures({ where: whereClause, outFields: [field], returnDistinctValues: true })
+      function fetchUniqueValues(field) {
+        return geojsonLayer.queryFeatures({ outFields: [field], returnDistinctValues: true })
           .then(result => Array.from(new Set(result.features.map(f => f.attributes[field]))).sort());
       }
-
-      // Inicializar selects al cargar
-      initializeSelects();
     });
   </script>
 </body>
