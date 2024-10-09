@@ -16,59 +16,59 @@
     #navbar {
       display: flex;
       align-items: center;
-      background-color: #0072bc; /* Color del fondo del navbar */
-      padding: 10px; /* Espacio alrededor del contenido del navbar */
-      color: white; /* Color del texto */
-      position: fixed; /* Fija el navbar en la parte superior */
-      width: 100%; /* Abarca todo el ancho de la pantalla */
-      z-index: 1000; /* Asegura que el navbar esté sobre otros elementos */
+      background-color: #0072bc;
+      padding: 10px;
+      color: white;
+      position: fixed;
+      width: 100%;
+      z-index: 1000;
     }
 
     #navbar img {
-      height: 30px; /* Ajusta el tamaño de la imagen */
-      margin-right: 10px; /* Espacio entre la imagen y el texto */
+      height: 30px;
+      margin-right: 10px;
     }
 
     #container {
-      display: flex; /* Usar flex para el contenedor principal */
-      margin-top: 50px; /* Espacio para el navbar fijo */
-      height: calc(100vh - 50px); /* Altura total menos la del navbar */
+      display: flex;
+      margin-top: 50px;
+      height: calc(100vh - 50px);
     }
 
     #viewDiv {
-      flex: 1; /* Permite que el mapa ocupe el espacio disponible */
-      height: 100%; /* Asegura que el mapa tenga la altura completa */
+      flex: 1;
+      height: 100%;
     }
 
     #widgetsContainer {
-      width: 200px; /* Ancho fijo para la barra lateral */
-      padding: 10px; /* Espacio interno en la barra lateral */
-      background-color: #f9f9f9; /* Color de fondo de la barra lateral */
-      border-left: 1px solid #ccc; /* Separador a la izquierda */
-      overflow-y: auto; /* Desplazamiento vertical si es necesario */
-      transition: width 0.3s; /* Transición suave para el colapso */
+      width: 200px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-left: 1px solid #ccc;
+      overflow-y: auto;
+      transition: width 0.3s;
     }
 
     select {
-      width: 100%; /* Hace que las listas desplegables ocupen todo el ancho de la barra lateral */
-      margin-bottom: 10px; /* Espacio entre las listas */
-      box-sizing: border-box; /* Asegura que el ancho incluya el padding */
+      width: 100%;
+      margin-bottom: 10px;
     }
 
-    /* Media query para pantallas más pequeñas */
+    /* Media query para pantallas pequeñas */
     @media (max-width: 768px) {
       #widgetsContainer {
-        width: 100px; /* Ancho reducido en pantallas pequeñas */
+        width: 150px;
       }
     }
 
     /* Media query para pantallas muy pequeñas */
     @media (max-width: 480px) {
       #widgetsContainer {
-        display: block; /* Asegura que la barra lateral esté visible en pantallas pequeñas */
+        display: none; /* Oculta la barra lateral en pantallas muy pequeñas */
       }
+
       #toggleWidgets {
-        display: block; /* Muestra el botón para alternar la visibilidad de la barra lateral */
+        display: block; /* Muestra el botón de hamburguesa */
         background-color: #0072bc;
         color: white;
         border: none;
@@ -76,23 +76,13 @@
         cursor: pointer;
         position: fixed;
         right: 10px;
-        top: 10px; /* Ajusta la posición si es necesario */
-        z-index: 1001; /* Asegura que el botón esté sobre otros elementos */
+        top: 60px;
+        z-index: 1001; 
       }
     }
 
-    /* Botón de alternar visibilidad de la barra lateral */
     #toggleWidgets {
-      display: block; /* Asegura que el botón esté visible en todas las pantallas */
-      background-color: #0072bc;
-      color: white;
-      border: none;
-      padding: 10px;
-      cursor: pointer;
-      position: fixed;
-      right: 10px;
-      top: 10px; /* Ajusta la posición si es necesario */
-      z-index: 1001; /* Asegura que el botón esté sobre otros elementos */
+      display: none; /* Oculta el botón en pantallas más grandes */
     }
   </style>
 </head>
@@ -143,9 +133,10 @@
 
       initializeSelects();
 
+      // Evento para el botón de hamburguesa
       document.getElementById("toggleWidgets").addEventListener("click", function() {
         const container = document.getElementById("widgetsContainer");
-        container.style.display = (container.style.display === "none" || container.style.display === "") ? "block" : "none";
+        container.style.display = container.style.display === "none" ? "block" : "none";
       });
 
       function createSymbol(fillColor, outlineColor = fillColor, outlineWidth = 0.5) {
@@ -228,11 +219,9 @@
         });
       }
 
-      function fetchUniqueValues(fieldName) {
-        return geojsonLayer.queryFeatures().then(results => {
-          const uniqueValues = [...new Set(results.features.map(feature => feature.attributes[fieldName]))];
-          return uniqueValues.sort();
-        });
+      function fetchUniqueValues(field) {
+        return geojsonLayer.queryFeatures({ outFields: [field], returnDistinctValues: true })
+          .then(result => Array.from(new Set(result.features.map(f => f.attributes[field]))).sort());
       }
     });
   </script>
