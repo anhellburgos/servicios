@@ -7,15 +7,64 @@
   <link rel="stylesheet" href="https://js.arcgis.com/4.25/esri/themes/light/main.css">
   <link rel="stylesheet" href="CSS/estilo.css">
   <script src="https://js.arcgis.com/4.25/"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    #navbar {
+      display: flex;
+      align-items: center;
+      background-color: #0072bc; /* Color del fondo del navbar */
+      padding: 10px; /* Espacio alrededor del contenido del navbar */
+      color: white; /* Color del texto */
+      position: fixed; /* Fija el navbar en la parte superior */
+      width: 100%; /* Abarca todo el ancho de la pantalla */
+      z-index: 1000; /* Asegura que el navbar esté sobre otros elementos */
+    }
+
+    #navbar img {
+      height: 30px; /* Ajusta el tamaño de la imagen */
+      margin-right: 10px; /* Espacio entre la imagen y el texto */
+    }
+
+    #container {
+      display: flex; /* Usar flex para el contenedor principal */
+      margin-top: 50px; /* Espacio para el navbar fijo */
+      height: calc(100vh - 50px); /* Altura total menos la del navbar */
+    }
+
+    #viewDiv {
+      flex: 1; /* Permite que el mapa ocupe el espacio disponible */
+      height: 100%; /* Asegura que el mapa tenga la altura completa */
+    }
+
+    #widgetsContainer {
+      width: 200px; /* Ancho fijo para la barra lateral */
+      padding: 10px; /* Espacio interno en la barra lateral */
+      background-color: #f9f9f9; /* Color de fondo de la barra lateral */
+      border-left: 1px solid #ccc; /* Separador a la izquierda */
+      overflow-y: auto; /* Desplazamiento vertical si es necesario */
+    }
+
+    select {
+      width: 100%; /* Hace que las listas desplegables ocupen todo el ancho de la barra lateral */
+      margin-bottom: 10px; /* Espacio entre las listas */
+    }
+  </style>
 </head>
 <body>
-  <div id="navbar">SIG-S</div>
+  <div id="navbar">
+    <img src="logosegura.png" alt="Logo SEGURA">
+    SIG-S
+  </div>
   <div id="container">
     <div id="viewDiv"></div>
     <div id="widgetsContainer">
       <select id="selectHorario1" class="esri-select"></select>
       <select id="selectHorario2" class="esri-select"></select>
-      <!-- Si decides añadir un tercer horario, descomenta la siguiente línea -->
+      <!-- En caso de un tercer horario, añadir el siguiente código -->
       <!-- <select id="selectHorario3" class="esri-select"></select> -->
     </div>
   </div>
