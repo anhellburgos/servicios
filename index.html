@@ -16,74 +16,41 @@
     #navbar {
       display: flex;
       align-items: center;
-      background-color: #0072bc;
-      padding: 10px;
-      color: white;
-      position: fixed;
-      width: 100%;
-      z-index: 1000;
+      background-color: #0072bc; /* Color del fondo del navbar */
+      padding: 10px; /* Espacio alrededor del contenido del navbar */
+      color: white; /* Color del texto */
+      position: fixed; /* Fija el navbar en la parte superior */
+      width: 100%; /* Abarca todo el ancho de la pantalla */
+      z-index: 1000; /* Asegura que el navbar esté sobre otros elementos */
     }
 
     #navbar img {
-      height: 30px;
-      margin-right: 10px;
+      height: 30px; /* Ajusta el tamaño de la imagen */
+      margin-right: 10px; /* Espacio entre la imagen y el texto */
     }
 
     #container {
-      display: flex;
-      margin-top: 50px;
-      height: calc(100vh - 50px);
+      display: flex; /* Usar flex para el contenedor principal */
+      margin-top: 50px; /* Espacio para el navbar fijo */
+      height: calc(100vh - 50px); /* Altura total menos la del navbar */
     }
 
     #viewDiv {
-      flex: 1;
+      flex: 1; /* Permite que el mapa ocupe el espacio disponible */
+      height: 100%; /* Asegura que el mapa tenga la altura completa */
     }
 
     #widgetsContainer {
-      width: 200px; /* Anchura por defecto */
-      padding: 10px;
-      background-color: #f9f9f9;
-      border-left: 1px solid #ccc;
-      overflow-y: auto;
-      transition: width 0.3s;
+      width: 200px; /* Ancho fijo para la barra lateral */
+      padding: 10px; /* Espacio interno en la barra lateral */
+      background-color: #f9f9f9; /* Color de fondo de la barra lateral */
+      border-left: 1px solid #ccc; /* Separador a la izquierda */
+      overflow-y: auto; /* Desplazamiento vertical si es necesario */
     }
 
     select {
-      width: 100%;
-      margin-bottom: 10px;
-    }
-
-    #toggleWidgets {
-      display: none;
-      background-color: #0072bc;
-      color: white;
-      border: none;
-      padding: 10px;
-      cursor: pointer;
-      position: fixed;
-      right: 10px;
-      top: 60px;
-      z-index: 1001;
-    }
-
-    /* Estilos para dispositivos móviles */
-    @media (max-width: 600px) {
-      #widgetsContainer {
-        width: 75%; /* Ocupa el 75% en móviles */
-        display: none; /* Oculta por defecto */
-      }
-
-      #toggleWidgets {
-        display: block; /* Muestra el botón en móviles */
-      }
-
-      #container {
-        flex-direction: column; /* Cambia la dirección a columna */
-      }
-
-      #viewDiv {
-        height: 50vh; /* Ajusta la altura del mapa en móviles */
-      }
+      width: 100%; /* Hace que las listas desplegables ocupen todo el ancho de la barra lateral */
+      margin-bottom: 10px; /* Espacio entre las listas */
     }
   </style>
 </head>
@@ -92,12 +59,13 @@
     <img src="logosegura.png" alt="Logo SEGURA">
     SIGSEP
   </div>
-  <button id="toggleWidgets">☰</button>
   <div id="container">
     <div id="viewDiv"></div>
     <div id="widgetsContainer">
       <select id="selectHorario1" class="esri-select"></select>
       <select id="selectHorario2" class="esri-select"></select>
+      <!-- En caso de un tercer horario, añadir el siguiente código -->
+      <!-- <select id="selectHorario3" class="esri-select"></select> -->
     </div>
   </div>
 
@@ -134,11 +102,6 @@
 
       initializeSelects();
 
-      document.getElementById("toggleWidgets").addEventListener("click", function() {
-        const container = document.getElementById("widgetsContainer");
-        container.style.display = container.style.display === "none" ? "block" : "none";
-      });
-
       function createSymbol(fillColor, outlineColor = fillColor, outlineWidth = 0.5) {
         return new SimpleFillSymbol({
           color: fillColor,
@@ -147,7 +110,10 @@
       }
 
       function createRenderer() {
-        return { type: "simple", symbol: createSymbol([0, 0, 255, 0.2]) };
+        return {
+          type: "simple",
+          symbol: createSymbol([0, 0, 255, 0.2])
+        };
       }
 
       function createBasemapGallery(view) {
@@ -169,10 +135,16 @@
         if (horario2) expressions.push(`Horario_2 = '${horario2}'`);
 
         geojsonLayer.definitionExpression = expressions.length ? expressions.join(" OR ") : "1=1";
+
+        const rendererField = horario2 ? "Horario_2" : "Horario_1";
+
         geojsonLayer.renderer = {
           type: "unique-value",
-          field: horario2 ? "Horario_2" : "Horario_1",
-          uniqueValueInfos: [{ value: horario2 || horario1, symbol: createSymbol([255, 0, 0, 0.5], [255, 255, 255, 1]) }],
+          field: rendererField,
+          uniqueValueInfos: [{
+            value: horario2 || horario1,
+            symbol: createSymbol([255, 0, 0, 0.5], [255, 255, 255, 1])
+          }],
           defaultSymbol: createSymbol([0, 0, 255, 0.2])
         };
 
@@ -187,22 +159,41 @@
       function initializeSelects() {
         const selectHorario1 = document.getElementById("selectHorario1");
         const selectHorario2 = document.getElementById("selectHorario2");
+        // En caso de un tercer horario, añadir el siguiente código
+        // const selectHorario3 = document.getElementById("selectHorario3");
 
-        fetchUniqueValues("Horario_1").then(horarios1 => updateSelect(selectHorario1, horarios1, "TODOS LOS HORARIOS 1"));
+        fetchUniqueValues("Horario_1").then(horarios1 => {
+          updateSelect(selectHorario1, horarios1, "TODOS LOS HORARIOS 1");
+        });
+
         fetchUniqueValues("Horario_2").then(horarios2 => {
           const filteredHorarios2 = horarios2.filter(h => h !== "SIN CORTE");
           updateSelect(selectHorario2, filteredHorarios2, "TODOS LOS HORARIOS 2");
         });
 
         selectHorario1.addEventListener("change", function() {
-          updateMap(this.value, null);
+          const selectedHorario1 = this.value;
           selectHorario2.selectedIndex = 0;
+          // En caso de un tercer horario, añadir el siguiente código
+          // selectHorario3.selectedIndex = 0;
+          updateMap(selectedHorario1, null);
         });
 
         selectHorario2.addEventListener("change", function() {
-          updateMap(null, this.value);
+          const selectedHorario2 = this.value;
           selectHorario1.selectedIndex = 0; 
+          // En caso de un tercer horario, añadir el siguiente código
+          // selectHorario3.selectedIndex = 0;
+          updateMap(null, selectedHorario2);
         });
+
+        // En caso de un tercer horario, añadir el siguiente código
+        // selectHorario3.addEventListener("change", function() {
+        //   const selectedHorario3 = this.value;
+        //   selectHorario1.selectedIndex = 0; 
+        //   selectHorario2.selectedIndex = 0; 
+        //   updateMap(null, null, selectedHorario3);
+        // });
       }
 
       function fetchUniqueValues(field) {
