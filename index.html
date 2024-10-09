@@ -37,7 +37,6 @@
 
     #viewDiv {
       flex: 1;
-      height: 100%;
     }
 
     #widgetsContainer {
@@ -54,35 +53,17 @@
       margin-bottom: 10px;
     }
 
-    /* Media query para pantallas pequeñas */
-    @media (max-width: 768px) {
-      #widgetsContainer {
-        width: 150px;
-      }
-    }
-
-    /* Media query para pantallas muy pequeñas */
-    @media (max-width: 480px) {
-      #widgetsContainer {
-        display: none; /* Oculta la barra lateral en pantallas muy pequeñas */
-      }
-
-      #toggleWidgets {
-        display: block; /* Muestra el botón de hamburguesa */
-        background-color: #0072bc;
-        color: white;
-        border: none;
-        padding: 10px;
-        cursor: pointer;
-        position: fixed;
-        right: 10px;
-        top: 60px;
-        z-index: 1001; 
-      }
-    }
-
     #toggleWidgets {
-      display: none; /* Oculta el botón en pantallas más grandes */
+      display: none;
+      background-color: #0072bc;
+      color: white;
+      border: none;
+      padding: 10px;
+      cursor: pointer;
+      position: fixed;
+      right: 10px;
+      top: 60px;
+      z-index: 1001;
     }
   </style>
 </head>
@@ -133,7 +114,6 @@
 
       initializeSelects();
 
-      // Evento para el botón de hamburguesa
       document.getElementById("toggleWidgets").addEventListener("click", function() {
         const container = document.getElementById("widgetsContainer");
         container.style.display = container.style.display === "none" ? "block" : "none";
@@ -147,10 +127,7 @@
       }
 
       function createRenderer() {
-        return {
-          type: "simple",
-          symbol: createSymbol([0, 0, 255, 0.2])
-        };
+        return { type: "simple", symbol: createSymbol([0, 0, 255, 0.2]) };
       }
 
       function createBasemapGallery(view) {
@@ -172,16 +149,10 @@
         if (horario2) expressions.push(`Horario_2 = '${horario2}'`);
 
         geojsonLayer.definitionExpression = expressions.length ? expressions.join(" OR ") : "1=1";
-
-        const rendererField = horario2 ? "Horario_2" : "Horario_1";
-
         geojsonLayer.renderer = {
           type: "unique-value",
-          field: rendererField,
-          uniqueValueInfos: [{
-            value: horario2 || horario1,
-            symbol: createSymbol([255, 0, 0, 0.5], [255, 255, 255, 1])
-          }],
+          field: horario2 ? "Horario_2" : "Horario_1",
+          uniqueValueInfos: [{ value: horario2 || horario1, symbol: createSymbol([255, 0, 0, 0.5], [255, 255, 255, 1]) }],
           defaultSymbol: createSymbol([0, 0, 255, 0.2])
         };
 
@@ -197,25 +168,20 @@
         const selectHorario1 = document.getElementById("selectHorario1");
         const selectHorario2 = document.getElementById("selectHorario2");
 
-        fetchUniqueValues("Horario_1").then(horarios1 => {
-          updateSelect(selectHorario1, horarios1, "TODOS LOS HORARIOS 1");
-        });
-
+        fetchUniqueValues("Horario_1").then(horarios1 => updateSelect(selectHorario1, horarios1, "TODOS LOS HORARIOS 1"));
         fetchUniqueValues("Horario_2").then(horarios2 => {
           const filteredHorarios2 = horarios2.filter(h => h !== "SIN CORTE");
           updateSelect(selectHorario2, filteredHorarios2, "TODOS LOS HORARIOS 2");
         });
 
         selectHorario1.addEventListener("change", function() {
-          const selectedHorario1 = this.value;
+          updateMap(this.value, null);
           selectHorario2.selectedIndex = 0;
-          updateMap(selectedHorario1, null);
         });
 
         selectHorario2.addEventListener("change", function() {
-          const selectedHorario2 = this.value;
+          updateMap(null, this.value);
           selectHorario1.selectedIndex = 0; 
-          updateMap(null, selectedHorario2);
         });
       }
 
