@@ -40,7 +40,7 @@
     }
 
     #widgetsContainer {
-      width: 200px;
+      width: 200px; /* Anchura por defecto */
       padding: 10px;
       background-color: #f9f9f9;
       border-left: 1px solid #ccc;
@@ -64,6 +64,26 @@
       right: 10px;
       top: 60px;
       z-index: 1001;
+    }
+
+    /* Estilos para dispositivos móviles */
+    @media (max-width: 600px) {
+      #widgetsContainer {
+        width: 75%; /* Ocupa el 75% en móviles */
+        display: none; /* Oculta por defecto */
+      }
+
+      #toggleWidgets {
+        display: block; /* Muestra el botón en móviles */
+      }
+
+      #container {
+        flex-direction: column; /* Cambia la dirección a columna */
+      }
+
+      #viewDiv {
+        height: 50vh; /* Ajusta la altura del mapa en móviles */
+      }
     }
   </style>
 </head>
