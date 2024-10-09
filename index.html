@@ -46,26 +46,57 @@
       background-color: #f9f9f9; /* Color de fondo de la barra lateral */
       border-left: 1px solid #ccc; /* Separador a la izquierda */
       overflow-y: auto; /* Desplazamiento vertical si es necesario */
+      transition: width 0.3s; /* Transición suave para el colapso */
     }
 
     select {
       width: 100%; /* Hace que las listas desplegables ocupen todo el ancho de la barra lateral */
       margin-bottom: 10px; /* Espacio entre las listas */
     }
+
+    /* Media query para pantallas más pequeñas */
+    @media (max-width: 768px) {
+      #widgetsContainer {
+        width: 100px; /* Ancho reducido en pantallas pequeñas */
+      }
+    }
+
+    /* Media query para pantallas muy pequeñas */
+    @media (max-width: 480px) {
+      #widgetsContainer {
+        display: none; /* Oculta la barra lateral en pantallas muy pequeñas */
+      }
+      #toggleWidgets {
+        display: block; /* Muestra un botón para alternar la visibilidad de la barra lateral */
+        background-color: #0072bc;
+        color: white;
+        border: none;
+        padding: 10px;
+        cursor: pointer;
+        position: fixed;
+        right: 10px;
+        top: 60px;
+        z-index: 1001; /* Asegura que el botón esté sobre otros elementos */
+      }
+    }
+
+    /* Botón de alternar visibilidad de la barra lateral */
+    #toggleWidgets {
+      display: none; /* Oculta el botón en pantallas más grandes */
+    }
   </style>
 </head>
 <body>
   <div id="navbar">
     <img src="logosegura.png" alt="Logo SEGURA">
-    SIG-S
+    SIGSEP
   </div>
+  <button id="toggleWidgets">☰</button>
   <div id="container">
     <div id="viewDiv"></div>
     <div id="widgetsContainer">
       <select id="selectHorario1" class="esri-select"></select>
       <select id="selectHorario2" class="esri-select"></select>
-      <!-- En caso de un tercer horario, añadir el siguiente código -->
-      <!-- <select id="selectHorario3" class="esri-select"></select> -->
     </div>
   </div>
 
@@ -101,6 +132,11 @@
       view.ui.add(new Locate({ view: view, useTracking: true }), "top-right");
 
       initializeSelects();
+
+      document.getElementById("toggleWidgets").addEventListener("click", function() {
+        const container = document.getElementById("widgetsContainer");
+        container.style.display = (container.style.display === "none" || container.style.display === "") ? "block" : "none";
+      });
 
       function createSymbol(fillColor, outlineColor = fillColor, outlineWidth = 0.5) {
         return new SimpleFillSymbol({
@@ -159,8 +195,6 @@
       function initializeSelects() {
         const selectHorario1 = document.getElementById("selectHorario1");
         const selectHorario2 = document.getElementById("selectHorario2");
-        // En caso de un tercer horario, añadir el siguiente código
-        // const selectHorario3 = document.getElementById("selectHorario3");
 
         fetchUniqueValues("Horario_1").then(horarios1 => {
           updateSelect(selectHorario1, horarios1, "TODOS LOS HORARIOS 1");
@@ -174,26 +208,14 @@
         selectHorario1.addEventListener("change", function() {
           const selectedHorario1 = this.value;
           selectHorario2.selectedIndex = 0;
-          // En caso de un tercer horario, añadir el siguiente código
-          // selectHorario3.selectedIndex = 0;
           updateMap(selectedHorario1, null);
         });
 
         selectHorario2.addEventListener("change", function() {
           const selectedHorario2 = this.value;
           selectHorario1.selectedIndex = 0; 
-          // En caso de un tercer horario, añadir el siguiente código
-          // selectHorario3.selectedIndex = 0;
           updateMap(null, selectedHorario2);
         });
-
-        // En caso de un tercer horario, añadir el siguiente código
-        // selectHorario3.addEventListener("change", function() {
-        //   const selectedHorario3 = this.value;
-        //   selectHorario1.selectedIndex = 0; 
-        //   selectHorario2.selectedIndex = 0; 
-        //   updateMap(null, null, selectedHorario3);
-        // });
       }
 
       function fetchUniqueValues(field) {
