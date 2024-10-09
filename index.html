@@ -8,6 +8,16 @@
   <link rel="stylesheet" href="CSS/estilo.css">
   <script src="https://js.arcgis.com/4.25/"></script>
   <style>
+    :root {
+      --navbar-bg: #0072bc;
+      --navbar-text: #fff;
+      --sidebar-bg: #f9f9f9;
+      --border-color: #ccc;
+      --blue-opacity: rgba(0, 0, 255, 0.2);
+      --red-opacity: rgba(255, 0, 0, 0.5);
+      --white: rgba(255, 255, 255, 1);
+    }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
@@ -16,54 +26,56 @@
     #navbar {
       display: flex;
       align-items: center;
-      background-color: #0072bc; /* Color del fondo del navbar */
-      padding: 10px; /* Espacio alrededor del contenido del navbar */
-      color: white; /* Color del texto */
-      position: fixed; /* Fija el navbar en la parte superior */
-      width: 100%; /* Abarca todo el ancho de la pantalla */
-      z-index: 1000; /* Asegura que el navbar esté sobre otros elementos */
+      background-color: var(--navbar-bg);
+      padding: 10px;
+      color: var(--navbar-text);
+      position: fixed;
+      width: 100%;
+      z-index: 1000;
     }
 
     #navbar img {
-      height: 30px; /* Ajusta el tamaño de la imagen */
-      margin-right: 10px; /* Espacio entre la imagen y el texto */
+      height: 30px;
+      margin-right: 10px;
     }
 
     #container {
-      display: flex; /* Usar flex para el contenedor principal */
-      margin-top: 50px; /* Espacio para el navbar fijo */
-      height: calc(100vh - 50px); /* Altura total menos la del navbar */
+      display: flex;
+      margin-top: 50px;
+      height: calc(100vh - 50px);
     }
 
     #viewDiv {
-      flex: 1; /* Permite que el mapa ocupe el espacio disponible */
-      height: 100%; /* Asegura que el mapa tenga la altura completa */
+      flex: 1;
+      height: 100%;
     }
 
-    #controlsContainer {
-      width: 200px; /* Ancho fijo para la barra lateral */
-      padding: 10px; /* Espacio interno en la barra lateral */
-      background-color: #f9f9f9; /* Color de fondo de la barra lateral */
-      border-left: 1px solid #ccc; /* Separador a la izquierda */
-      overflow-y: auto; /* Desplazamiento vertical si es necesario */
+    #widgetsContainer {
+      width: 200px;
+      padding: 10px;
+      background-color: var(--sidebar-bg);
+      border-left: 1px solid var(--border-color);
+      overflow-y: auto;
     }
 
     select {
-      width: 100%; /* Hace que las listas desplegables ocupen todo el ancho de la barra lateral */
-      margin-bottom: 10px; /* Espacio entre las listas */
+      width: 100%;
+      margin-bottom: 10px;
     }
   </style>
 </head>
 <body>
-  <div id="navbar">
+  <div id="navbar" role="navigation">
     <img src="logosegura.png" alt="Logo SEGURA">
-    SIGSEP
+    <span>SIGSEP</span>
   </div>
   <div id="container">
-    <div id="viewDiv"></div>
-    <div id="controlsContainer"> <!-- Nueva sección para las listas -->
-      <select id="selectHorario1" class="esri-select"></select>
-      <select id="selectHorario2" class="esri-select"></select>
+    <div id="viewDiv" aria-label="Mapa"></div>
+    <div id="widgetsContainer">
+      <select id="selectHorario1" class="esri-select" aria-label="Seleccionar horario 1"></select>
+      <select id="selectHorario2" class="esri-select" aria-label="Seleccionar horario 2"></select>
+      <!-- En caso de un tercer horario, añadir el siguiente código -->
+      <!-- <select id="selectHorario3" class="esri-select" aria-label="Seleccionar horario 3"></select> -->
     </div>
   </div>
 
@@ -110,7 +122,7 @@
       function createRenderer() {
         return {
           type: "simple",
-          symbol: createSymbol([0, 0, 255, 0.2])
+          symbol: createSymbol("rgba(0, 0, 255, 0.2)")
         };
       }
 
@@ -135,15 +147,14 @@
         geojsonLayer.definitionExpression = expressions.length ? expressions.join(" OR ") : "1=1";
 
         const rendererField = horario2 ? "Horario_2" : "Horario_1";
-
         geojsonLayer.renderer = {
           type: "unique-value",
           field: rendererField,
           uniqueValueInfos: [{
             value: horario2 || horario1,
-            symbol: createSymbol([255, 0, 0, 0.5], [255, 255, 255, 1])
+            symbol: createSymbol("rgba(255, 0, 0, 0.5)", "rgba(255, 255, 255, 1)")
           }],
-          defaultSymbol: createSymbol([0, 0, 255, 0.2])
+          defaultSymbol: createSymbol("rgba(0, 0, 255, 0.2)")
         };
 
         geojsonLayer.queryFeatures().then(results => {
@@ -169,7 +180,7 @@
 
         selectHorario1.addEventListener("change", function() {
           const selectedHorario1 = this.value;
-          selectHorario2.selectedIndex = 0;
+          selectHorario2.selectedIndex = 0; 
           updateMap(selectedHorario1, null);
         });
 
