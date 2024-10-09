@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Esri Map - GeoJSON Layer (Guayaquil)</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.25/esri/themes/light/main.css">
+  <link rel="stylesheet" href="CSS/estilo.css">
+  <script src="https://js.arcgis.com/4.25/"></script>
+</head>
+<body>
+  <div id="navbar">SIG-S</div>
+  <div id="container">
+    <div id="viewDiv"></div>
+    <div id="widgetsContainer">
+      <select id="selectDistrito" class="esri-select">
+        <option value="">TODOS LOS DISTRITOS</option>
+      </select>
+      <select id="selectCircuito" class="esri-select">
+        <option value="">TODOS LOS CIRCUITOS</option>
+      </select>
+      <select id="selectSubcircuito" class="esri-select">
+        <option value="">TODOS LOS SUBCIRCUITOS</option>
+      </select>
+    </div>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/GeoJSONLayer",
+      "esri/symbols/SimpleFillSymbol",
+      "esri/widgets/BasemapGallery",
+      "esri/widgets/Expand"
+    ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, BasemapGallery, Expand) {
+
+      // Función para crear símbolos
+      function createSymbol(fillColor, outlineColor = "red", outlineWidth = 0.5) {
+        return new SimpleFillSymbol({
+          color: fillColor,
+          outline: { color: outlineColor, width: outlineWidth }
+        });
+      }
+
+      const symbols = {
+        default: createSymbol([0, 0, 0, 0]),
+        highlightDistrict: createSymbol([0, 0, 255, 0.2]),
+        highlightCircuit: createSymbol([0, 255, 0, 0.2]),
+        highlightSubcircuit: createSymbol([255, 165, 0, 0.2])
+      };
+
+      // Capa de GeoJSON
+      const geojsonLayer = new GeoJSONLayer({
+        url: "base_poblacional_gye.geojson",
+        renderer: { type: "simple", symbol: symbols.default },
+        popupTemplate: {
+          title: "{Distrito}",
+          content: `<b>Circuito:</b> {Circuito}<br><b>Subcircuito:</b> {Subcircuit}<br><b>Población:</b> {pob_t_sc}`
+        }
+      });
+
+      // Crear mapa y vista
+      const map = new Map({ basemap: "hybrid", layers: [geojsonLayer] });
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-79.9595, -2.1200],
+        zoom: 11
+      });
+
+      // Basemap Gallery y Expand
+      const basemapGallery = new BasemapGallery({ view: view });
+      const basemapGalleryExpand = new Expand({ view: view, content: basemapGallery, expanded: false });
+      view.ui.add(basemapGalleryExpand, "bottom-left");
+
+      // Actualizar selects
+      function updateSelect(element, options, defaultText) {
+        element.innerHTML = `<option value="">${defaultText}</option>`;
+        options.forEach(option => element.append(new Option(option, option)));
+      }
+
+      // Actualizar mapa
+      function updateMap(distrito, circuito, subcircuito) {
+        let expression = [];
+        if (distrito) expression.push(`Distrito = '${distrito}'`);
+        if (circuito) expression.push(`Circuito = '${circuito}'`);
+        if (subcircuito) expression.push(`Subcircuit = '${subcircuito}'`);
+
+        geojsonLayer.definitionExpression = expression.join(" AND ") || "1=1";
+
+        const rendererField = subcircuito ? "Subcircuit" : circuito ? "Circuito" : "Distrito";
+        const rendererSymbol = subcircuito ? symbols.highlightSubcircuit : circuito ? symbols.highlightCircuit : symbols.highlightDistrict;
+
+        geojsonLayer.renderer = {
+          type: "unique-value",
+          field: rendererField,
+          uniqueValueInfos: [{ value: subcircuito || circuito || distrito, symbol: rendererSymbol }],
+          defaultSymbol: symbols.default
+        };
+
+        geojsonLayer.queryFeatures().then(results => {
+          const features = results.features;
+          if (features.length) {
+            const extent = features.reduce((ext, feature) => ext ? ext.union(feature.geometry.extent) : feature.geometry.extent, null);
+            if (extent) view.goTo(extent.expand(1.5)).catch(console.error);
+          }
+        }).catch(console.error);
+      }
+
+      // Inicializar selects
+      function initializeSelects() {
+        const selectDistrito = document.getElementById("selectDistrito");
+        const selectCircuito = document.getElementById("selectCircuito");
+        const selectSubcircuito = document.getElementById("selectSubcircuito");
+
+        // Asignar valores únicos a los selects
+        fetchUniqueValues("Distrito").then(distritos => updateSelect(selectDistrito, distritos, "TODOS LOS DISTRITOS"));
+
+        selectDistrito.addEventListener("change", function() {
+          const selectedDistrito = this.value;
+          if (selectedDistrito) {
+            fetchUniqueValues("Circuito", `Distrito = '${selectedDistrito}'`).then(circuitos => updateSelect(selectCircuito, circuitos, "TODOS LOS CIRCUITOS"));
+            updateMap(selectedDistrito, null, null);
+          } else {
+            updateSelect(selectCircuito, [], "TODOS LOS CIRCUITOS");
+            updateSelect(selectSubcircuito, [], "TODOS LOS SUBCIRCUITOS");
+            updateMap(null, null, null);
+          }
+        });
+
+        selectCircuito.addEventListener("change", function() {
+          const selectedDistrito = selectDistrito.value;
+          const selectedCircuito = this.value;
+          updateSelect(selectSubcircuito, [], "TODOS LOS SUBCIRCUITOS");
+          if (selectedCircuito) {
+            fetchUniqueValues("Subcircuit", `Distrito = '${selectedDistrito}' AND Circuito = '${selectedCircuito}'`).then(subcircuitos => updateSelect(selectSubcircuito, subcircuitos, "TODOS LOS SUBCIRCUITOS"));
+          }
+          updateMap(selectedDistrito, selectedCircuito, null);
+        });
+
+        selectSubcircuito.addEventListener("change", function() {
+          updateMap(selectDistrito.value, selectCircuito.value, this.value);
+        });
+      }
+
+      // Obtener valores únicos de un campo
+      function fetchUniqueValues(field, whereClause = "") {
+        return geojsonLayer.queryFeatures({ where: whereClause, outFields: [field], returnDistinctValues: true })
+          .then(result => Array.from(new Set(result.features.map(f => f.attributes[field]))).sort());
+      }
+
+      // Inicializar selects al cargar
+      initializeSelects();
+    });
+  </script>
+</body>
+</html>
