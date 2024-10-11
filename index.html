@@ -85,7 +85,7 @@
           <option value="13-10-2024">13/10/2024</option>
         </select>
         <select class="form-select" id="selectHora" style="display: none;">
-          <option value="">Seleccione una fecha</option>
+          <option value="">Seleccione una hora</option>
         </select>
       </div>
     </div>
@@ -108,35 +108,15 @@
       "esri/widgets/BasemapGallery",
       "esri/widgets/Expand",
       "esri/widgets/Locate",
-      "esri/widgets/Search" // Importa el widget de búsqueda
+      "esri/widgets/Search"
     ], function(Map, MapView, GeoJSONLayer, SimpleFillSymbol, BasemapGallery, Expand, Locate, Search) {
 
       const geojsonLayers = {
-        "09-10-2024": new GeoJSONLayer({
-          url: "cortes20241009.geojson",
-          renderer: createRenderer([0, 0, 255, 0.2]),
-          popupTemplate: createPopupTemplate()
-        }),
-        "10-10-2024": new GeoJSONLayer({
-          url: "cortes20241010.geojson",
-          renderer: createRenderer([255, 10, 0, 0.2]),
-          popupTemplate: createPopupTemplate()
-        }),
-        "11-10-2024": new GeoJSONLayer({
-          url: "cortes20241011.geojson",
-          renderer: createRenderer([0, 128, 0, 0.2]),
-          popupTemplate: createPopupTemplate()
-        }),
-        "12-10-2024": new GeoJSONLayer({
-          url: "cortes20241012.geojson",
-          renderer: createRenderer([128, 0, 128, 0.2]),
-          popupTemplate: createPopupTemplate()
-        }),
-        "13-10-2024": new GeoJSONLayer({
-          url: "cortes20241013.geojson",
-          renderer: createRenderer([255, 0, 0, 0.2]),
-          popupTemplate: createPopupTemplate()
-        })
+        "09-10-2024": { url: "cortes20241009.geojson", fillColor: [0, 0, 255, 0.2] },
+        "10-10-2024": { url: "cortes20241010.geojson", fillColor: [255, 10, 0, 0.2] },
+        "11-10-2024": { url: "cortes20241011.geojson", fillColor: [0, 128, 0, 0.2] },
+        "12-10-2024": { url: "cortes20241012.geojson", fillColor: [128, 0, 128, 0.2] },
+        "13-10-2024": { url: "cortes20241013.geojson", fillColor: [255, 0, 0, 0.2] }
       };
 
       const map = new Map({ basemap: "streets", layers: [] });
@@ -147,19 +127,11 @@
         zoom: 11
       });
 
-      // Widget de búsqueda
-      const searchWidget = new Search({
-        view: view
-      });
-
       const locateWidget = new Locate({
         view: view,
         useTracking: true
       });
-
-      // Agrega el widget de búsqueda y de geolocalización
       view.ui.add(locateWidget, "bottom-right");
-      //view.ui.add(searchWidget, "bottom-right"); // Añadir debajo del widget de geolocalización
 
       const basemapGallery = new BasemapGallery({
         view: view,
@@ -197,7 +169,7 @@
       }
 
       function fetchUniqueHours(date) {
-        const layer = geojsonLayers[date];
+        const layer = createGeoJSONLayer(date);
         return layer.queryFeatures({ outFields: ["Horario_1", "Horario_2"], returnDistinctValues: true })
           .then(result => {
             const hours = new Set();
@@ -214,8 +186,8 @@
       function updateMap(selectedDate, selectedHour) {
         map.removeAll();
 
-        if (selectedDate && geojsonLayers[selectedDate]) {
-          const layer = geojsonLayers[selectedDate];
+        if (selectedDate) {
+          const layer = createGeoJSONLayer(selectedDate);
           map.add(layer);
 
           if (selectedHour) {
@@ -226,6 +198,15 @@
 
           view.goTo({ target: layer.fullExtent, zoom: 11 });
         }
+      }
+
+      function createGeoJSONLayer(selectedDate) {
+        const { url, fillColor } = geojsonLayers[selectedDate];
+        return new GeoJSONLayer({
+          url: url,
+          renderer: createRenderer(fillColor),
+          popupTemplate: createPopupTemplate()
+        });
       }
 
       function createRenderer(fillColor) {
