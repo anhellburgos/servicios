@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SIGSEP - Cortes de Energía CNELEP</title>
+  <link rel="icon" href="seguraicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="https://js.arcgis.com/4.25/esri/themes/light/main.css">
   <link rel="stylesheet" href="CSS/estilo.css">
   <script src="https://js.arcgis.com/4.25/"></script>
@@ -24,6 +25,10 @@
       font-size: 0.8rem;
     }
     
+    a{
+      color: white;
+    }
+
     .content {
       flex: 1;
       position: relative;
@@ -92,10 +97,8 @@
   </div>
 
   <footer>
-    Fuente: <a href="https://drive.google.com/file/d/12mJQArraDREmdM1uqlugeRt25enWc0h_/view" style="color: white;" target="_blank">Corporación Nacional de Electricidad - CENELEP</a>
-    <br>  
-    Consulta tu horario con: <a href="https://serviciosenlinea.cnelep.gob.ec/cortes-energia/" style="color: white;" target="_blank">Servicios en Linea CENELEP</a>
-    <br>
+    Fuente: <a href="https://drive.google.com/file/d/12mJQArraDREmdM1uqlugeRt25enWc0h_/view" target="_blank">Corporación Nacional de Electricidad - CENELEP</a><br>  
+    Consulta tu horario con: <a href="https://serviciosenlinea.cnelep.gob.ec/cortes-energia/" target="_blank">Servicios en Linea CENELEP</a><br>
     Elaborado por: Coordinación Técnica de Estadística y Datos - Sistema de Información Geográfica
   </footer>
 
@@ -143,7 +146,7 @@
       const view = new MapView({
         container: "map",
         map: map,
-        center: [-79.9595, -2.1200],
+        center: [-79.9595, -2.1500],
         zoom: 11
       });
 
